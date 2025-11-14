@@ -1,0 +1,121 @@
+agents:
+  - id: claude-sonnet
+    type: claude_code
+    enabled: true            # default: true
+    cli_command: "claude"
+    cli_args: {model: "sonnet", --add-dir: '/PATH/TO/DIR'}
+    timeout: 600             # default: 60
+    config:                  # defaults shown
+      temperature: 0.7
+      max_tokens: null       # unlimited
+  - id: claude-opus
+    type: claude_code
+    enabled: true            # default: true
+    cli_command: "claude"
+    cli_args: {model: "opus", --add-dir: '/PATH/TO/DIR'}
+    timeout: 600             # default: 60
+    config: # defaults shown
+      temperature: 0.7
+      max_tokens: null       # unlimited
+  - id: claude-haiku
+    type: claude_code
+    enabled: false            # default: true
+    cli_command: "claude"
+    cli_args: {model: "haiku", --add-dir: '/PATH/TO/DIR'}
+    timeout: 600             # default: 60
+    config: # defaults shown
+      temperature: 0.7
+      max_tokens: null       # unlimited
+  - id: gpt-5-high
+    type: openai_codex
+    enabled: true
+    cli_command: "codex exec"
+    cli_args: {--model: "gpt-5.1", --enable: "web_search_request", --cd: "/PATH/TO/DIR"}
+    cli_flags: ["--skip-git-repo-check"]
+    cli_positional: ["-"]
+    timeout: 600
+    config:
+      temperature: 0.7
+      max_tokens: null
+  - id: gpt-5-codex
+    type: openai_codex
+    enabled: true
+    cli_command: "codex exec"
+    cli_args: { --model: "gpt-5.1-codex", --enable: "web_search_request", --cd: "/PATH/TO/DIR" }
+    cli_flags: ["--skip-git-repo-check"]
+    cli_positional: ["-"]
+    timeout: 600
+    config:
+      temperature: 0.7
+      max_tokens: null
+  - id: gpt-5-codex-mini
+    type: openai_codex
+    enabled: true
+    cli_command: "codex exec"
+    cli_args: { --model: "gpt-5.1-codex-mini", --enable: "web_search_request", --cd: "/PATH/TO/DIR" }
+    cli_flags: [ "--skip-git-repo-check" ]
+    cli_positional: [ "-" ]
+    timeout: 600
+    config:
+      temperature: 0.7
+      max_tokens: null
+
+topology:
+  type: all_to_all        # all_to_all | k_reviewers | ring | star
+  k: null                 # used by k_reviewers
+  seed: 427               # deterministic peer assignment
+  hub_agent: null         # used by star
+
+deadlines:
+  soft_timeout_ms: 15000000  # quorum wait before accepting late results
+  hard_timeout_ms: 30000000  # hard stop for a critique round
+  min_agents: 3              # quorum count at soft deadline
+
+security:
+  # API key sourcing (optional, for wrappers)
+  api_key_source: null    # env|file|keyring (adapter-specific)
+  api_key_name: null      # e.g., OPENAI_API_KEY
+  # Ensure the executables used in cli_command are allowlisted
+  cli_allowed_commands: ["claude", "codex"]
+  cli_use_shell: false    # must remain false per spec
+  cli_timeout_ms: 60000   # global CLI timeout ceiling
+  # Size caps and redaction
+  max_requirement_size: 20000000
+  max_solution_size: 400000000
+  max_critique_size: 20000000
+  redact_patterns:        # defaults; extend as needed
+    - 'sk-[A-Za-z0-9_-]+'
+    - '(?i)api[_-]?key'
+
+budget:
+  max_total_time_sec: 12000      # overall wall time budget
+  max_round_time_sec: 12000      # per-critique-round budget
+  max_agent_time_sec: 12000      # per-agent call budget
+  max_concurrent_agents: null   # limit parallelism (null = N agents)
+  # Token features (tracking + optional truncation)
+  enable_token_truncation: false
+  max_tokens_per_agent_per_round: null
+  max_total_tokens: null
+  enforce_total_tokens: false # if true, raises when exceeding
+
+output:
+  save_transcript: true       # persist transcript to disk
+  transcript_dir: transcripts # directory path
+  format: json                # json | markdown
+  verbose: false              # CLI prints extra info when true
+  include_topology_info: true # include topology in transcript
+
+logging:
+  level: INFO                 # DEBUG|INFO|WARNING|ERROR
+  file: null                  # optional file path
+  console: true               # log to console
+  structured: false           # JSON lines when true
+
+validation:
+  enable_sandbox: false       # disabled by default
+  sandbox_timeout_ms: 500
+
+cache:
+  enabled: false              # on-disk memoization of agent outputs
+  dir: ".mad_cache"
+  max_entries: null

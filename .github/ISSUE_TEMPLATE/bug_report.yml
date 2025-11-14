@@ -1,0 +1,46 @@
+name: Bug report
+description: File a bug report
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Steps to reproduce, including minimal config and commands
+      placeholder: |
+        1. Command line
+        2. Config snippet (redact secrets)
+        3. Expected vs actual
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `poetry run freemad --version`
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      description: e.g., 3.10.14
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS
+        - Linux
+        - Windows
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (redact secrets)
+      render: shell
+

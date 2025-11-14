@@ -1,0 +1,97 @@
+# FREE-MAD full configuration reference (copy to a new file and edit)
+# Normative source of truth: conclusion/normative-spec.md
+# Notes:
+# - Values shown are the defaults unless otherwise noted.
+# - Strings for enums use lowercase where applicable (e.g., tie_break, topology.type).
+# - For production, set explicit values rather than relying on defaults.
+
+agents:
+  # Define one entry per agent.
+  # Built-ins: 'claude_code' and 'openai_codex'. You can register more.
+  - id: claude
+    type: claude_code              # required; adapter type
+    enabled: true                  # default: true
+    cli_command: null              # e.g., "claude" or "zen-mcp claude"; read prompt from stdin
+    cli_args: {}                   # extra flags as key-value; {'model': 'gpt-4o'} -> "--model gpt-4o"; keys starting with '-' are used as-is
+    cli_flags: []                  # single flags without values (order preserved), e.g., ['--enable-feature', '-v']
+    cli_positional: []             # positional args appended at end (order preserved), e.g., ['-']
+    timeout: 60                    # per-call timeout in seconds
+    config:
+      temperature: 0.7             # adapter-specific runtime option
+      max_tokens: null             # null = unlimited
+  - id: codex
+    type: openai_codex
+    enabled: true
+    cli_command: null              # e.g., "codex" or "zen-mcp codex"
+    cli_args: {}                   # e.g., {'endpoint': 'http://localhost:8000'}
+    cli_flags: []                  # e.g., ['--enable-web-search']
+    cli_positional: []             # use ['-'] if your CLI expects '-' to read from stdin
+    timeout: 60
+    config:
+      temperature: 0.7
+      max_tokens: null
+
+topology:
+  type: all_to_all                 # all_to_all | k_reviewers | ring | star
+  k: null                          # required for k_reviewers; 1..N-1
+  seed: 12345                      # deterministic peer assignment
+  hub_agent: null                  # required for star; must match an agent id
+
+deadlines:
+  soft_timeout_ms: 15000           # quorum wait; accept late arrivals until hard
+  hard_timeout_ms: 30000           # hard stop for critique round
+  min_agents: 2                    # quorum count at soft deadline (1..N)
+
+scoring:
+  weights: [20.0, 25.0, 30.0, 20.0] # [initial, change_penalty, change_reward, keep]
+  normalize: true                  # contributor-based normalization
+  tie_break: deterministic         # deterministic | random
+  random_seed: 987654321           # used when tie_break=random
+
+security:
+  api_key_source: null             # optional; adapter/wrapper specific
+  api_key_name: null               # optional; e.g., OPENAI_API_KEY
+  redact_patterns:                 # applied to logs/metrics
+    - 'sk-[A-Za-z0-9_-]+'
+    - '(?i)api[_-]?key'
+  max_requirement_size: 20000      # chars; requirement cap (with truncation marker)
+  max_solution_size: 40000         # chars; per-solution cap (with truncation marker)
+  max_critique_size: 20000         # chars; per-critique cap (with truncation marker)
+  cli_use_shell: false             # must remain false for safety
+  cli_timeout_ms: 60000            # global ceiling for subprocess timeout
+  cli_allowed_commands:            # executables allowed for agents
+    - 'claude'
+    - 'codex'
+    - 'zen-mcp'
+
+budget:
+  max_total_time_sec: 120          # overall wall time (null = unlimited)
+  max_round_time_sec: 30           # per-critique-round budget (null = unlimited)
+  max_agent_time_sec: 20           # per-agent call budget (null = unlimited)
+  max_tokens_per_agent_per_round: null  # prompt truncation target (approx)
+  max_total_tokens: null           # tracked globally; enforced if enforce_total_tokens=true
+  enforce_total_tokens: false      # when true, exceeding raises BudgetExceeded
+  enable_token_truncation: true    # applies to prompts only
+  max_concurrent_agents: null      # limit parallelism; null => N agents
+
+output:
+  save_transcript: true            # persist transcript
+  transcript_dir: transcripts      # directory path
+  format: json                     # json | markdown
+  verbose: false                   # extra stdout during CLI run
+  include_topology_info: true      # embed topology info in transcript
+
+logging:
+  level: INFO                      # DEBUG | INFO | WARNING | ERROR
+  file: null                       # optional log file path
+  console: true                    # log to console
+  structured: false                # JSON lines when true
+
+validation:
+  enable_sandbox: false            # disabled by default; runs code in restricted mode
+  sandbox_timeout_ms: 500          # per-validation timeout
+
+cache:
+  enabled: false                   # on-disk memoization of agent outputs
+  dir: .mad_cache                  # cache folder in project root
+  max_entries: null                # null = unlimited entries (bounded by disk)

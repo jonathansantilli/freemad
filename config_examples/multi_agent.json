@@ -1,0 +1,160 @@
+{
+  "agents": [
+    {
+      "id": "claude-sonnet",
+      "type": "claude_code",
+      "enabled": true,
+      "cli_command": "claude",
+      "cli_args": {
+        "model": "sonnet",
+        "--add-dir": "/PATH/TO/DIR"
+      },
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    },
+    {
+      "id": "claude-opus",
+      "type": "claude_code",
+      "enabled": true,
+      "cli_command": "claude",
+      "cli_args": {
+        "model": "opus",
+        "--add-dir": "/PATH/TO/DIR"
+      },
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    },
+    {
+      "id": "claude-haiku",
+      "type": "claude_code",
+      "enabled": false,
+      "cli_command": "claude",
+      "cli_args": {
+        "model": "haiku",
+        "--add-dir": "/PATH/TO/DIR"
+      },
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    },
+    {
+      "id": "gpt-5-high",
+      "type": "openai_codex",
+      "enabled": true,
+      "cli_command": "codex exec",
+      "cli_args": {
+        "--model": "gpt-5.1",
+        "--enable": "web_search_request",
+        "--cd": "/PATH/TO/DIR"
+      },
+      "cli_flags": ["--skip-git-repo-check"],
+      "cli_positional": ["-"],
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    },
+    {
+      "id": "gpt-5-codex",
+      "type": "openai_codex",
+      "enabled": true,
+      "cli_command": "codex exec",
+      "cli_args": {
+        "--model": "gpt-5.1-codex",
+        "--enable": "web_search_request",
+        "--cd": "/PATH/TO/DIR"
+      },
+      "cli_flags": ["--skip-git-repo-check"],
+      "cli_positional": ["-"],
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    },
+    {
+      "id": "gpt-5-codex-mini",
+      "type": "openai_codex",
+      "enabled": true,
+      "cli_command": "codex exec",
+      "cli_args": {
+        "--model": "gpt-5.1-codex-mini",
+        "--enable": "web_search_request",
+        "--cd": "/PATH/TO/DIR"
+      },
+      "cli_flags": ["--skip-git-repo-check"],
+      "cli_positional": ["-"],
+      "timeout": 600,
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": null
+      }
+    }
+  ],
+  "topology": {
+    "type": "all_to_all",
+    "k": null,
+    "seed": 427,
+    "hub_agent": null
+  },
+  "deadlines": {
+    "soft_timeout_ms": 15000000,
+    "hard_timeout_ms": 30000000,
+    "min_agents": 3
+  },
+  "security": {
+    "api_key_source": null,
+    "api_key_name": null,
+    "cli_allowed_commands": ["claude", "codex"],
+    "cli_use_shell": false,
+    "cli_timeout_ms": 60000,
+    "max_requirement_size": 20000000,
+    "max_solution_size": 400000000,
+    "max_critique_size": 20000000,
+    "redact_patterns": [
+      "sk-[A-Za-z0-9_-]+",
+      "(?i)api[_-]?key"
+    ]
+  },
+  "budget": {
+    "max_total_time_sec": 12000,
+    "max_round_time_sec": 12000,
+    "max_agent_time_sec": 12000,
+    "max_concurrent_agents": null,
+    "enable_token_truncation": false,
+    "max_tokens_per_agent_per_round": null,
+    "max_total_tokens": null,
+    "enforce_total_tokens": false
+  },
+  "output": {
+    "save_transcript": true,
+    "transcript_dir": "transcripts",
+    "format": "json",
+    "verbose": false,
+    "include_topology_info": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": null,
+    "console": true,
+    "structured": false
+  },
+  "validation": {
+    "enable_sandbox": false,
+    "sandbox_timeout_ms": 500
+  },
+  "cache": {
+    "enabled": false,
+    "dir": ".mad_cache",
+    "max_entries": null
+  }
+}

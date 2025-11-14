@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="mb-6">
+  <div class="text-sm text-slate-500">{{ run._timestamp or run._file }}</div>
+  <h2 class="text-xl font-semibold">Run: {{ run._file }}</h2>
+</div>
+
+<!-- Final Solution hero -->
+<div class="bg-white shadow rounded-lg p-4 mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <div>
+      <div class="text-xs uppercase text-slate-500">Final Solution</div>
+      <div class="text-xs text-slate-600">Answer ID: <span class="font-mono">{{ run.final_answer_id }}</span></div>
+    </div>
+    <div class="text-xs text-slate-600 space-x-3">
+      <span>Winning agents: <span class="font-medium">{{ run.winning_agents|join(', ') }}</span></span>
+      {% if run.origin_agents %}
+      <span>Origin: <span class="font-medium">{{ run.origin_agents|join(', ') }}</span>{% if run.holders_history %} (first seen round {{ (run.holders_history.keys()|list|map('int')|min) }}){% endif %}</span>
+      {% endif %}
+      {% set total_rounds = (run.transcript|length) - 1 %}
+      <span>Rounds: <span class="font-medium">{{ total_rounds if total_rounds > 0 else 0 }}</span></span>
+      {% if run.scores and run.final_answer_id in run.scores %}
+      <span>Score: <span class="font-medium">{{ '%.2f'|format(run.scores[run.final_answer_id]) }}</span></span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex items-center space-x-2 mb-2">
+    <button id="finalCopyBtn" class="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50">Copy</button>
+    <button id="finalWrapBtn" class="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50" data-wrap="1">No-wrap</button>
+  </div>
+  <pre id="finalText" class="text-sm bg-slate-50 p-3 rounded border border-slate-200 overflow-auto whitespace-pre-wrap h-[50vh]">{{ run.final_solution or '(empty)' }}</pre>
+  <script>
+    (function(){
+      const t=document.getElementById('finalText');
+      const c=document.getElementById('finalCopyBtn');
+      const w=document.getElementById('finalWrapBtn');
+      c?.addEventListener('click', async()=>{try{await navigator.clipboard.writeText(t.textContent||''); c.textContent='Copied!'; setTimeout(()=>c.textContent='Copy',1200);}catch{}});
+      w?.addEventListener('click',()=>{const wrap=w.getAttribute('data-wrap')==='1'; if(wrap){t.classList.remove('whitespace-pre-wrap'); t.classList.add('whitespace-pre'); w.textContent='Wrap'; w.setAttribute('data-wrap','0');} else {t.classList.remove('whitespace-pre'); t.classList.add('whitespace-pre-wrap'); w.textContent='No-wrap'; w.setAttribute('data-wrap','1');}});
+    })();
+  </script>
+</div>
+
+<!-- Final metrics dashboard -->
+{% set m = run.metrics or {} %}
+<div class="grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-2">
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    <div class="text-xs uppercase text-slate-500">Winner Score <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Normalized score of the selected answer (raw score divided by contributors). Earlier rounds weigh more via 1/(round+1). Guide: >25 strong, ~15 moderate, <10 weak.">ⓘ</button></div>
+    {% set ws = (run.scores[run.final_answer_id] if run.scores and run.final_answer_id in run.scores else 0) %}
+    <div class="text-2xl font-semibold">{{ '%.2f'|format(ws) }}</div>
+    <div class="text-xs text-slate-500 mt-1">Higher is better (contribution-adjusted)</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    {% set ar = m.agreement_rate or 0 %}
+    {% set ar_label = 'Unanimous' if ar == 1 else ('Strong' if ar >= 0.8 else ('Mixed' if ar >= 0.5 else 'Divided')) %}
+    <div class="text-xs uppercase text-slate-500">Agreement Rate <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Fraction of agents ending with the winner’s answer. 1.00 unanimous, ≥0.80 strong, 0.50–0.79 mixed, <0.50 divided.">ⓘ</button></div>
+    <div class="text-2xl font-semibold">{{ '%.0f'|format(ar*100) }}%</div>
+    <div class="text-xs text-slate-500 mt-1">{{ ar_label }} alignment</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    {% set oc = m.opinion_changes or 0 %}
+    {% set oc_label = 'Stable' if oc == 0 else ('Some churn' if oc <= 2 else 'Churny') %}
+    <div class="text-xs uppercase text-slate-500">Opinion Changes <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Total REVISE events across critique rounds. 0 stable, 1–2 some churn, ≥3 noisy.">ⓘ</button></div>
+    <div class="text-2xl font-semibold">{{ oc }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ oc_label }} debate</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    <div class="text-xs uppercase text-slate-500">Rounds <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Critique rounds executed (excludes generation). May be fewer than requested if budgets stop early.">ⓘ</button></div>
+    <div class="text-2xl font-semibold">{{ m.num_rounds or 0 }}</div>
+    <div class="text-xs text-slate-500 mt-1">Executed critiques</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    {% set sd = m.deadline_soft_hits or 0 %}
+    <div class="text-xs uppercase text-slate-500">Soft Deadlines <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Soft quorum barrier hits. High counts suggest slow agents or high quorum; late results still accepted until hard deadline.">ⓘ</button></div>
+    <div class="text-2xl font-semibold">{{ sd }}</div>
+    <div class="text-xs text-slate-500 mt-1">Quorum waits</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4 text-center">
+    {% set hd = m.deadline_hard_hits or 0 %}
+    <div class="text-xs uppercase text-slate-500">Hard Deadlines <button type="button" class="tip cursor-help text-slate-500 hover:text-slate-700" data-tip="Hard cut-offs where late critiques were dropped. Any non-zero may harm quality; consider extending hard_timeout_ms.">ⓘ</button></div>
+    <div class="text-2xl font-semibold">{{ hd }}</div>
+    <div class="text-xs text-slate-500 mt-1">Cut-offs</div>
+  </div>
+</div>
+<div class="text-xs text-slate-500 mb-6">Hover ⓘ for details and quick interpretation guides.</div>
+
+<!-- Primary: Interactive Solution & Reasoning Viewer -->
+<div class="bg-white shadow rounded-lg p-4 mb-6">
+  <h3 class="font-semibold mb-3">Solution & Reasoning Viewer</h3>
+  <div class="md:flex md:items-center md:space-x-3 space-y-3 md:space-y-0 mb-3">
+    <div>
+      <label class="block text-xs text-slate-500">Agent</label>
+      <select id="agentSelect" class="border border-slate-300 rounded px-2 py-1 text-sm">
+        {% for aid in run.timeline.keys() %}
+          <option value="{{ aid }}">{{ aid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500">Round</label>
+      <select id="roundSelect" class="border border-slate-300 rounded px-2 py-1 text-sm">
+        {% for r in run.transcript %}
+          <option value="{{ r.round }}">{{ r.round }} — {{ r.type }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="grow"></div>
+    <div class="flex items-center space-x-2">
+      <button id="copyBtn" class="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50">Copy</button>
+      <button id="wrapBtn" class="text-xs px-2 py-1 border border-slate-300 rounded hover:bg-slate-50" data-wrap="1">No-wrap</button>
+    </div>
+  </div>
+
+  <div class="border-b border-slate-200 mb-3">
+    <nav class="-mb-px flex space-x-4 text-sm" aria-label="Tabs">
+      <a href="#" data-tab="solution" class="tab-link border-b-2 border-blue-500 text-blue-600 px-3 py-2">Solution</a>
+      <a href="#" data-tab="reasoning" class="tab-link border-b-2 border-transparent hover:border-slate-300 text-slate-600 px-3 py-2">Reasoning</a>
+      <a href="#" data-tab="diff" class="tab-link border-b-2 border-transparent hover:border-slate-300 text-slate-600 px-3 py-2">Diff (prev → new)</a>
+    </nav>
+  </div>
+
+  <div id="viewerMeta" class="text-xs text-slate-600 mb-2"></div>
+  <div id="viewer" class="relative">
+    <pre id="viewerText" class="text-sm bg-slate-50 p-3 rounded border border-slate-200 overflow-auto whitespace-pre-wrap"></pre>
+  </div>
+
+  <script>
+    const timeline = {{ run.timeline | tojson }};
+    const transcript = {{ run.transcript | tojson }};
+    const agentSel = document.getElementById('agentSelect');
+    const roundSel = document.getElementById('roundSelect');
+    const viewer = document.getElementById('viewerText');
+    const viewerMeta = document.getElementById('viewerMeta');
+    const wrapBtn = document.getElementById('wrapBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    let currentTab = 'solution';
+
+    function findEvent(aid, roundIdx) {
+      const events = timeline[aid] || [];
+      // Strict match: do NOT fall back to round 0, to avoid showing generation when a critique is selected
+      return events.find(e => e.round === roundIdx) || null;
+    }
+    function setTab(tab){
+      currentTab = tab;
+      document.querySelectorAll('.tab-link').forEach(el => {
+        el.classList.remove('border-blue-500','text-blue-600');
+        el.classList.add('text-slate-600');
+        if (el.dataset.tab === tab){
+          el.classList.add('border-blue-500','text-blue-600');
+          el.classList.remove('text-slate-600');
+        }
+      });
+      updateView();
+    }
+    function updateView(){
+      const aid = agentSel.value;
+      const roundIdx = parseInt(roundSel.value, 10);
+      const e = findEvent(aid, roundIdx);
+      if (!e){ viewer.textContent = '(no event for this agent in this round)'; viewerMeta.textContent=''; return; }
+      let text = '';
+      if (currentTab === 'solution') text = e.solution || '(empty)';
+      if (currentTab === 'reasoning') text = e.reasoning || '(empty)';
+      if (currentTab === 'diff') text = e.diff || '(no diff)';
+      viewer.textContent = text;
+      viewerMeta.textContent = `Agent ${aid} — Round ${e.round} (${e.type}) — decision: ${e.decision} — changed: ${e.changed} — peers_seen: ${e.peers_seen}`;
+    }
+    document.querySelectorAll('.tab-link').forEach(el => {
+      el.addEventListener('click', (ev)=>{ ev.preventDefault(); setTab(el.dataset.tab); });
+    });
+    agentSel.addEventListener('change', updateView);
+    roundSel.addEventListener('change', updateView);
+    wrapBtn.addEventListener('click', (ev)=>{
+      const wrap = wrapBtn.getAttribute('data-wrap') === '1';
+      if (wrap){
+        viewer.classList.remove('whitespace-pre-wrap');
+        viewer.classList.add('whitespace-pre');
+        wrapBtn.textContent = 'Wrap';
+        wrapBtn.setAttribute('data-wrap','0');
+      } else {
+        viewer.classList.remove('whitespace-pre');
+        viewer.classList.add('whitespace-pre-wrap');
+        wrapBtn.textContent = 'No-wrap';
+        wrapBtn.setAttribute('data-wrap','1');
+      }
+    });
+    copyBtn.addEventListener('click', async ()=>{
+      try { await navigator.clipboard.writeText(viewer.textContent || ''); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy',1200);} catch {}
+    });
+    // Default selection: winner agent (first) and last round
+    (function init(){
+      const winners = {{ run.winning_agents | tojson }};
+      if (winners && winners.length && timeline[winners[0]]){
+        agentSel.value = winners[0];
+      }
+      if (transcript && transcript.length){
+        roundSel.value = transcript[transcript.length-1].round;
+      }
+      updateView();
+    })();
+  </script>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="space-y-6">
+    <div class="bg-white shadow rounded-lg p-4">
+      <h3 class="font-semibold mb-2">Why this answer won</h3>
+      {% set chain = run.selection_explanation.chain or [] %}
+      <ol class="list-decimal list-inside text-sm text-slate-700">
+        {% for step in chain %}
+          <li class="mb-1">
+            <span class="font-medium">{{ step.step }}</span>
+            — winner set: <span class="font-mono">{{ step.winners|join(', ') }}</span>
+            {% if step.value is defined %}(value: {{ step.value }}){% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+      <div class="mt-3">
+        <canvas id="scoresChart" height="110"></canvas>
+      </div>
+      <script>
+        const scores = {{ run.scores | tojson }};
+        const ctx = document.getElementById('scoresChart');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(scores),
+            datasets: [{
+              label: 'Normalized Score',
+              data: Object.values(scores),
+              backgroundColor: 'rgba(59,130,246,0.4)',
+              borderColor: 'rgb(59,130,246)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      </script>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white shadow rounded-lg p-4">
+      <h3 class="font-semibold mb-2">Validation Results</h3>
+      {% set vr = run.validation %}
+      {% if vr %}
+        {% for ans_id, validators in vr.items() %}
+        <div class="mb-3">
+          <div class="font-mono text-xs">Answer {{ ans_id }}</div>
+          <table class="text-xs mt-1 w-full">
+            <thead class="bg-slate-100"><tr><th class="text-left px-2 py-1">Validator</th><th class="text-left px-2 py-1">Passed</th><th class="text-left px-2 py-1">Confidence</th></tr></thead>
+            <tbody>
+            {% for name, res in validators.items() %}
+              <tr class="border-t border-slate-100"><td class="px-2 py-1">{{ name }}</td><td class="px-2 py-1">{{ res.passed }}</td><td class="px-2 py-1">{{ res.confidence }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-sm text-slate-500">No validation records.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Debate Navigator & Timeline (collapsible by round or by agent) -->
+<div class="bg-white shadow rounded-lg p-4 mb-6">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="font-semibold">Debate Timeline</h3>
+    <div class="text-xs space-x-2">
+      <button id="tabRound" class="px-2 py-1 border border-slate-300 rounded bg-slate-100">By Round</button>
+      <button id="tabAgent" class="px-2 py-1 border border-slate-300 rounded">By Agent</button>
+      <button id="expandAll" class="px-2 py-1 border border-slate-300 rounded">Expand All</button>
+      <button id="collapseAll" class="px-2 py-1 border border-slate-300 rounded">Collapse All</button>
+    </div>
+  </div>
+  <div class="md:flex md:items-center md:space-x-3 space-y-3 md:space-y-0 mb-3">
+    <div>
+      <label class="block text-xs text-slate-500">Jump to Round</label>
+      <select id="navRoundSelect" class="border border-slate-300 rounded px-2 py-1 text-sm">
+        {% for r in run.transcript %}
+          <option value="{{ r.round }}">Round {{ r.round }} — {{ r.type }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500">Jump to Agent</label>
+      <select id="navAgentSelect" class="border border-slate-300 rounded px-2 py-1 text-sm">
+        {% for aid in run.timeline.keys() %}
+          <option value="{{ aid }}">{{ aid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- By Round view -->
+  <div id="viewByRound" class="dt-scope">
+    {% if run.round_groups %}
+      {% for g in run.round_groups %}
+      <details class="mb-3" id="round-{{ g.round }}" open>
+        <summary class="cursor-pointer select-none py-1 px-2 bg-slate-100 rounded border border-slate-200">
+          <span class="font-medium">Round {{ g.round }}</span>
+          <span class="text-slate-500">— {{ g.type }}</span>
+          <span class="ml-2 text-slate-400">changed: {{ g.changed_count }}</span>
+        </summary>
+        <div class="mt-2 space-y-3">
+          {% for e in g.events %}
+          <div class="border border-slate-200 rounded p-2">
+            <div class="text-xs text-slate-600"><span class="font-medium">Agent {{ e.agent_id }}</span> — decision: <span class="font-medium">{{ e.decision }}</span> — changed: {{ e.changed }}</div>
+            {% if e.reasoning %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Reasoning</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.reasoning }}</pre>
+            </details>
+            {% endif %}
+            {% if e.changed and e.diff %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Diff (prev → new)</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.diff }}</pre>
+            </details>
+            {% elif e.solution and e.round == 0 %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Initial Solution</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.solution }}</pre>
+            </details>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    {% else %}
+      <div class="text-sm text-slate-500">No timeline available.</div>
+    {% endif %}
+  </div>
+
+  <!-- By Agent view -->
+  <div id="viewByAgent" class="dt-scope hidden">
+    {% if run.timeline %}
+      {% for aid, events in run.timeline.items() %}
+      <details class="mb-3" id="agent-{{ aid }}" open>
+        <summary class="cursor-pointer select-none py-1 px-2 bg-slate-100 rounded border border-slate-200">
+          <span class="font-medium">Agent {{ aid }}</span>
+        </summary>
+        <div class="mt-2 space-y-3">
+          {% for e in events %}
+          <div class="border border-slate-200 rounded p-2">
+            <div class="text-xs text-slate-600">Round {{ e.round }} — {{ e.type }} — decision: <span class="font-medium">{{ e.decision }}</span> — changed: {{ e.changed }}</div>
+            {% if e.reasoning %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Reasoning</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.reasoning }}</pre>
+            </details>
+            {% endif %}
+            {% if e.changed and e.diff %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Diff (prev → new)</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.diff }}</pre>
+            </details>
+            {% elif e.solution and e.round == 0 %}
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs uppercase text-slate-500">Initial Solution</summary>
+              <pre class="text-xs bg-slate-50 p-2 rounded border border-slate-100 overflow-auto">{{ e.solution }}</pre>
+            </details>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    {% else %}
+      <div class="text-sm text-slate-500">No agent timeline available.</div>
+    {% endif %}
+  </div>
+
+  <script>
+    (function(){
+      const viewByRound = document.getElementById('viewByRound');
+      const viewByAgent = document.getElementById('viewByAgent');
+      const tabRound = document.getElementById('tabRound');
+      const tabAgent = document.getElementById('tabAgent');
+      const navRound = document.getElementById('navRoundSelect');
+      const navAgent = document.getElementById('navAgentSelect');
+      const expandAll = document.getElementById('expandAll');
+      const collapseAll = document.getElementById('collapseAll');
+      function showRound(){ viewByRound.classList.remove('hidden'); viewByAgent.classList.add('hidden'); tabRound.classList.add('bg-slate-100'); tabAgent.classList.remove('bg-slate-100'); }
+      function showAgent(){ viewByAgent.classList.remove('hidden'); viewByRound.classList.add('hidden'); tabAgent.classList.add('bg-slate-100'); tabRound.classList.remove('bg-slate-100'); }
+      tabRound?.addEventListener('click', showRound);
+      tabAgent?.addEventListener('click', showAgent);
+      navRound?.addEventListener('change', ()=>{ const id = 'round-'+navRound.value; document.getElementById(id)?.scrollIntoView({behavior:'smooth', block:'start'}); });
+      navAgent?.addEventListener('change', ()=>{ const id = 'agent-'+navAgent.value; document.getElementById(id)?.scrollIntoView({behavior:'smooth', block:'start'}); });
+      function toggleAll(open){
+        const scope = (!viewByRound.classList.contains('hidden')) ? viewByRound : viewByAgent;
+        scope.querySelectorAll('details').forEach(d => d.open = open);
+      }
+      expandAll?.addEventListener('click', ()=>toggleAll(true));
+      collapseAll?.addEventListener('click', ()=>toggleAll(false));
+    })();
+  </script>
+</div>
+
+<!-- Per-round Snapshot in two columns -->
+{% set rounds = run.transcript %}
+{% set mid = ((rounds|length) + 1) // 2 %}
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-2">Per-round Snapshot (1)</h3>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-100"><tr><th class="text-left px-3 py-2">Round</th><th class="text-left px-3 py-2">Type</th><th class="text-left px-3 py-2">Deadline Flags</th><th class="text-left px-3 py-2">Agents</th></tr></thead>
+        <tbody>
+          {% for r in rounds[:mid] %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ r.round }}</td>
+            <td class="px-3 py-2">{{ r.type }}</td>
+            <td class="px-3 py-2 text-xs">soft={{ r.deadline_hit_soft }} hard={{ r.deadline_hit_hard }}</td>
+            <td class="px-3 py-2 text-xs">
+              <ul class="list-disc list-inside">
+              {% for aid, rec in r.agents.items() %}
+                <li><span class="font-medium">{{ aid }}</span> — decision: {{ rec.response.decision }}, changed: {{ rec.response.changed }} — peers_seen: {{ rec.peers_seen_count }}, peers_assigned: {{ rec.peers_assigned_count }}</li>
+              {% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-2">Per-round Snapshot (2)</h3>
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-100"><tr><th class="text-left px-3 py-2">Round</th><th class="text-left px-3 py-2">Type</th><th class="text-left px-3 py-2">Deadline Flags</th><th class="text-left px-3 py-2">Agents</th></tr></thead>
+        <tbody>
+          {% for r in rounds[mid:] %}
+          <tr class="border-t border-slate-100">
+            <td class="px-3 py-2">{{ r.round }}</td>
+            <td class="px-3 py-2">{{ r.type }}</td>
+            <td class="px-3 py-2 text-xs">soft={{ r.deadline_hit_soft }} hard={{ r.deadline_hit_hard }}</td>
+            <td class="px-3 py-2 text-xs">
+              <ul class="list-disc list-inside">
+              {% for aid, rec in r.agents.items() %}
+                <li><span class="font-medium">{{ aid }}</span> — decision: {{ rec.response.decision }}, changed: {{ rec.response.changed }} — peers_seen: {{ rec.peers_seen_count }}, peers_assigned: {{ rec.peers_assigned_count }}</li>
+              {% endfor %}
+              </ul>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

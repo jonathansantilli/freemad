@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FREE-MAD Dashboard</title>
+  <!-- Tailwind Play CDN (dev-friendly) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- htmx for small interactions without a JS build -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-xl font-semibold">FREE-MAD Dashboard</h1>
+      <nav class="text-sm text-slate-600">
+        <a href="/" class="hover:underline">Runs</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 py-6 text-xs text-slate-500">
+    Built for local analysis of FREE-MAD transcripts.
+  </footer>
+
+  <!-- Lightweight tooltip system for inline ⓘ help -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const tip = document.createElement('div');
+      tip.id = 'mad-tooltip';
+      tip.className = 'fixed z-50 hidden px-2 py-1 text-xs bg-slate-800 text-white rounded shadow ring-1 ring-black/20 max-w-[22rem]';
+      document.body.appendChild(tip);
+      const pad = 10;
+      const show = (ev, text) => { tip.textContent = text; tip.classList.remove('hidden'); move(ev); };
+      const move = (ev) => { tip.style.left = (ev.clientX + pad) + 'px'; tip.style.top = (ev.clientY + pad) + 'px'; };
+      const hide = () => tip.classList.add('hidden');
+      const bind = (el) => {
+        const text = el.getAttribute('data-tip') || el.getAttribute('title');
+        if (!text) return;
+        el.setAttribute('title',''); // suppress native tooltip
+        el.addEventListener('mouseenter', (e)=>show(e, text));
+        el.addEventListener('mousemove', move);
+        el.addEventListener('mouseleave', hide);
+        el.addEventListener('focus', (e)=>show(e, text));
+        el.addEventListener('blur', hide);
+      };
+      document.querySelectorAll('.tip').forEach(bind);
+    });
+  </script>
+</body>
+</html>

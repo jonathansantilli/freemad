@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below.
+title: FREE-MAD Orchestrator
+version: 0.2.0
+authors:
+  - family-names: Santilli
+    given-names: Jonathan
+    email: jonathansantilli@gmail.com
+date-released: 2025-11-07
+repository-code: https://github.com/jonathansantilli/mad

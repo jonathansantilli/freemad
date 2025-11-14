@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# Treat schema and docs as text
+*.md text linguist-documentation
+*.yml text
+*.yaml text
+*.json text
+

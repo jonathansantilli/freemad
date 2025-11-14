@@ -1,0 +1,81 @@
+[project]
+# Distribution name for PyPI (distinct from import package "mad")
+name = "freemad"
+version = "0.2.0"
+description = "FREE-MAD Orchestrator: Consensus-Free Multi-Agent Debate with CLI adapters, transcripts, dashboard, and tests."
+authors = [
+    {name = "Jonathan Santilli", email = "jonathansantilli@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+  "PyYAML>=6.0",
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "Jinja2>=3.1.4"
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/jonathansantilli/mad"
+Repository = "https://github.com/jonathansantilli/mad"
+Issues = "https://github.com/jonathansantilli/mad/issues"
+Documentation = "https://github.com/jonathansantilli/mad#readme"
+
+[project.scripts]
+freemad = "freemad.cli:main"
+freemad-dashboard = "freemad.dashboard.app:main"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.8.0"
+black = "^24.10.0"
+ruff = "^0.6.9"
+mypy = "^1.12.0"
+pytest = "^8.3.3"
+pytest-cov = "^5.0.0"
+bandit = "^1.7.9"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.poetry.scripts]
+# Backwards-compatibility for older Poetry versions that do not read [project.scripts]
+freemad = "freemad.cli:main"
+freemad-dashboard = "freemad.dashboard.app:main"
+
+[tool.poetry]
+# Ensure Poetry packages the correct import package (project name differs: freemad vs package 'mad')
+packages = [
+  { include = "freemad" }
+]
+include = [
+  # Ensure templates/static are present in built wheels and sdists
+  { path = "freemad/dashboard/templates", format = "wheel" },
+  { path = "freemad/dashboard/templates", format = "sdist" },
+  { path = "freemad/dashboard/static", format = "wheel" },
+  { path = "freemad/dashboard/static", format = "sdist" },
+  # Ship example configs in sdist for docs
+  { path = "examples", format = "sdist" }
+]

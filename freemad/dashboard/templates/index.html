@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-lg font-semibold">Recent Runs</h2>
+  <div class="text-sm text-slate-500">Showing {{ runs|length }} transcript(s)</div>
+  </div>
+
+<div class="overflow-x-auto bg-white shadow rounded-lg">
+  <table class="min-w-full text-sm">
+    <thead class="bg-slate-100">
+      <tr>
+        <th class="text-left px-4 py-2">Time</th>
+        <th class="text-left px-4 py-2">File</th>
+        <th class="text-left px-4 py-2">Winning Agents</th>
+        <th class="text-left px-4 py-2">Rounds</th>
+        <th class="text-left px-4 py-2">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in runs %}
+      <tr class="border-t border-slate-100 hover:bg-slate-50">
+        <td class="px-4 py-2 whitespace-nowrap">{{ r.timestamp or '-' }}</td>
+        <td class="px-4 py-2">{{ r.file }}</td>
+        <td class="px-4 py-2">{{ r.winning_agents|join(', ') }}</td>
+        <td class="px-4 py-2">{{ r.rounds }}</td>
+        <td class="px-4 py-2"><a class="text-blue-600 hover:underline" href="/runs/{{ r.file }}">View</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
