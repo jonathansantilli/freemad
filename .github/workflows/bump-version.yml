@@ -1,0 +1,99 @@
+name: Bump Version and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch  # 0.2.0 → 0.2.1
+          - minor  # 0.2.0 → 0.3.0
+          - major  # 0.2.0 → 1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          # Read current version from pyproject.toml
+          CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "Current version: $CURRENT_VERSION"
+
+          # Parse version parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+          # Bump based on input
+          case "${{ github.event.inputs.bump_type }}" in
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+
+          # Update pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+
+          # Set outputs
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.bump.outputs.version_tag }}
+          git push origin main
+          git push origin ${{ steps.bump.outputs.version_tag }}
+
+      - name: Summary
+        run: |
+          echo "## Version Bump Complete! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **New version:** ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git tag:** ${{ steps.bump.outputs.version_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The tag push will trigger the PyPI release workflow automatically." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Monitor the [Release workflow](https://github.com/${{ github.repository }}/actions/workflows/release.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Pull changes locally: \`git pull --tags\`" >> $GITHUB_STEP_SUMMARY
