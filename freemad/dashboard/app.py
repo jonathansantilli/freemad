@@ -123,7 +123,8 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         obj = _load_json(p)
         # augment for UI
         obj["_file"] = file
-        obj["_timestamp"] = _parse_ts(file).isoformat() if _parse_ts(file) else None
+        ts = _parse_ts(file)
+        obj["_timestamp"] = ts.isoformat() if ts else None
         obj["selection_explanation"] = _selection_explanation(obj)
         # Build per-agent debate timeline with previous solutions for diffs
         timeline: Dict[str, List[Dict[str, Any]]] = {}

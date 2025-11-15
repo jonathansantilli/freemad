@@ -5,6 +5,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from freemad.agents import bootstrap as agent_bootstrap
 from freemad.config import ConfigError, load_config
@@ -53,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # Build a single overrides dict for load_config
-    overrides = {}
+    overrides: dict[str, dict[str, Any]] = {}
     if args.transcript_dir:
         overrides.setdefault("output", {})["transcript_dir"] = args.transcript_dir
     if args.format:

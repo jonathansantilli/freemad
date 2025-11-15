@@ -181,10 +181,10 @@ def default_config() -> Config:
 
 def _asdict_cfg(cfg: Any) -> Dict[str, Any]:
     if dataclasses.is_dataclass(cfg):
-        return {k: _asdict_cfg(v) for k, v in dataclasses.asdict(cfg).items()}
+        return {k: _asdict_cfg(v) for k, v in dataclasses.asdict(cfg).items()}  # type: ignore[arg-type]
     if isinstance(cfg, list):
-        return [_asdict_cfg(x) for x in cfg]
-    return cfg
+        return [_asdict_cfg(x) for x in cfg]  # type: ignore[return-value]
+    return cfg  # type: ignore[return-value]
 
 
 def to_dict(cfg: Config) -> Dict[str, Any]:

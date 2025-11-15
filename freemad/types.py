@@ -1,5 +1,14 @@
 from __future__ import annotations
-from enum import StrEnum
+import sys
+from enum import Enum
+
+# StrEnum was added in Python 3.11
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    class StrEnum(str, Enum):  # type: ignore[no-redef]
+        """Compatibility StrEnum for Python 3.10"""
+        pass
 
 
 class Decision(StrEnum):

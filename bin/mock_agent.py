@@ -3,7 +3,7 @@ import argparse
 import sys
 
 
-def main():
+def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["generate", "critique"])
     ap.add_argument("--force-revise", action="store_true")

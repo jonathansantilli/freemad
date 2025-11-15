@@ -4,7 +4,7 @@ import logging
 import shlex
 import subprocess
 import time
-from typing import List, Tuple
+from typing import Any, List, Optional, Tuple
 import json
 
 from freemad.config import AgentConfig, Config, ConfigError
@@ -28,12 +28,13 @@ class CLIAdapter(Agent):
     def __init__(self, cfg: Config, agent_cfg: AgentConfig):
         super().__init__(cfg, agent_cfg)
         # lazy logger binding for truncation/caching events
+        self.logger: Optional[Any] = None
         try:
             from freemad.utils.logger import get_logger
 
-            self.logger = get_logger(cfg)  # type: ignore[attr-defined]
+            self.logger = get_logger(cfg)
         except Exception:  # pragma: no cover
-            self.logger = None  # type: ignore[attr-defined]
+            pass
         self._cache = DiskCache(cfg.cache.dir, cfg.cache.max_entries) if cfg.cache.enabled else None
 
     def _ensure_allowed(self, exe: str) -> None:
@@ -76,7 +77,8 @@ class CLIAdapter(Agent):
             if hit is not None:
                 return hit, 0.0, True
         t0 = time.perf_counter()
-        log_event(self.logger, LogEvent.COMMAND, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode)
+        if self.logger:
+            log_event(self.logger, LogEvent.COMMAND, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode)
         proc = subprocess.run(
             cmd,
             input=input_text,
@@ -87,7 +89,8 @@ class CLIAdapter(Agent):
         )
         elapsed_ms = (time.perf_counter() - t0) * 1000
         out = (proc.stdout or proc.stderr or "").strip()
-        log_event(self.logger, LogEvent.COMMAND, level=logging.DEBUG, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode, output=out)
+        if self.logger:
+            log_event(self.logger, LogEvent.COMMAND, level=logging.DEBUG, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode, output=out)
         # store in cache
         if self._cache is not None:
             try:
@@ -115,7 +118,7 @@ class CLIAdapter(Agent):
         # Default empty if still invalid
         solution = parsed.solution
         solution, truncated = enforce_size(solution, self.cfg.security.max_solution_size, label="solution")
-        if truncated and hasattr(self, "logger"):
+        if truncated and self.logger:
             log_event(self.logger, LogEvent.TRUNCATE, label="solution", agent=self.agent_cfg.id)
         ans_id = compute_answer_id(solution)
         tokens_out = approx_tokens(solution + "\n\n" + parsed.reasoning)
@@ -144,9 +147,9 @@ class CLIAdapter(Agent):
         # If still invalid: default KEEP without changes
         decision = parsed.decision if not parsed.needs_retry else Decision.KEEP
         changed = decision == Decision.REVISE and bool(parsed.solution)
-        new_solution = parsed.solution if changed else own_response
+        new_solution = parsed.solution if (changed and parsed.solution) else own_response
         new_solution, truncated = enforce_size(new_solution, self.cfg.security.max_solution_size, label="solution")
-        if truncated and hasattr(self, "logger"):
+        if truncated and self.logger:
             log_event(self.logger, LogEvent.TRUNCATE, label="solution", agent=self.agent_cfg.id)
         ans_id = compute_answer_id(new_solution)
         tokens_out = approx_tokens((parsed.solution or own_response) + "\n\n" + parsed.reasoning)

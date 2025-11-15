@@ -3,7 +3,7 @@ agents:
     type: claude_code
     enabled: true            # default: true
     cli_command: "claude"
-    cli_args: {model: "sonnet", --add-dir: '/PATH/TO/DIR'}
+    cli_args: {model: "sonnet", --add-dir: '/Users/jonathansantilli/dailybot/workspace/auria'}
     timeout: 600             # default: 60
     config:                  # defaults shown
       temperature: 0.7
@@ -12,7 +12,7 @@ agents:
     type: claude_code
     enabled: true            # default: true
     cli_command: "claude"
-    cli_args: {model: "opus", --add-dir: '/PATH/TO/DIR'}
+    cli_args: {model: "opus", --add-dir: '/Users/jonathansantilli/dailybot/workspace/auria'}
     timeout: 600             # default: 60
     config: # defaults shown
       temperature: 0.7
@@ -21,7 +21,7 @@ agents:
     type: claude_code
     enabled: false            # default: true
     cli_command: "claude"
-    cli_args: {model: "haiku", --add-dir: '/PATH/TO/DIR'}
+    cli_args: {model: "haiku", --add-dir: '/Users/jonathansantilli/dailybot/workspace/auria'}
     timeout: 600             # default: 60
     config: # defaults shown
       temperature: 0.7
@@ -30,7 +30,7 @@ agents:
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: {--model: "gpt-5.1", --enable: "web_search_request", --cd: "/PATH/TO/DIR"}
+    cli_args: {--model: "gpt-5.1", --enable: "web_search_request", --cd: "/Users/jonathansantilli/dailybot/workspace/auria"}
     cli_flags: ["--skip-git-repo-check"]
     cli_positional: ["-"]
     timeout: 600
@@ -41,7 +41,7 @@ agents:
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: { --model: "gpt-5.1-codex", --enable: "web_search_request", --cd: "/PATH/TO/DIR" }
+    cli_args: { --model: "gpt-5.1-codex", --enable: "web_search_request", --cd: "/Users/jonathansantilli/dailybot/workspace/auria" }
     cli_flags: ["--skip-git-repo-check"]
     cli_positional: ["-"]
     timeout: 600
@@ -52,7 +52,7 @@ agents:
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: { --model: "gpt-5.1-codex-mini", --enable: "web_search_request", --cd: "/PATH/TO/DIR" }
+    cli_args: { --model: "gpt-5.1-codex-mini", --enable: "web_search_request", --cd: "/Users/jonathansantilli/dailybot/workspace/auria" }
     cli_flags: [ "--skip-git-repo-check" ]
     cli_positional: [ "-" ]
     timeout: 600

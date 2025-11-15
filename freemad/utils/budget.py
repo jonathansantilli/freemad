@@ -13,7 +13,7 @@ class BudgetGuard:
     max_total_time_sec: float | None
     max_round_time_sec: float | None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._start = time.perf_counter()
 
     def check_total(self) -> None:

@@ -150,11 +150,11 @@ class Orchestrator:
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
                 futs = {
                     ex.submit(
-                        self.agents[aid].critique_and_refine,
+                        self.agents[aid].critique_and_refine,  # type: ignore[arg-type]
                         requirement_trunc,
                         enforce_size(current_solution.get(aid, ""), self.cfg.security.max_solution_size, label="own_solution")[0],
                         peer_bundles.get(aid, []),
-                    ): aid
+                    ): aid  # type: ignore[misc]
                     for aid in self.agents.keys()
                 }
                 completed: Dict[str, dict] = {}
@@ -167,7 +167,7 @@ class Orchestrator:
                         break
                     done, _ = concurrent.futures.wait(list(futs.keys()), timeout=remaining, return_when=concurrent.futures.FIRST_COMPLETED)
                     for d in done:
-                        aid = futs.pop(d)
+                        aid = futs.pop(d)  # type: ignore[assignment]
                         try:
                             completed[aid] = d.result().__dict__
                         except Exception as e:
@@ -188,7 +188,7 @@ class Orchestrator:
                         break
                     done, _ = concurrent.futures.wait(list(futs.keys()), timeout=remaining, return_when=concurrent.futures.FIRST_COMPLETED)
                     for d in done:
-                        aid = futs.pop(d)
+                        aid = futs.pop(d)  # type: ignore[assignment]
                         try:
                             completed[aid] = d.result().__dict__
                         except Exception as e:
@@ -318,7 +318,7 @@ class Orchestrator:
             "validation": {ans: {name: vars(res) for name, res in vresults[ans].items()} for ans in self.answer_text.keys()},
             "validator_confidence": vconf,
             "score_explainers": {ans: [{**e.__dict__, "action": e.action.value} for e in self.score.explain_score(ans)] for ans in self.answer_text.keys()},
-            "metrics": self._compute_metrics(transcript, best_ans, vresults),
+            "metrics": self._compute_metrics(transcript, best_ans, vresults),  # type: ignore[arg-type]
         }
         return result
 
@@ -350,7 +350,7 @@ class Orchestrator:
                 for rec in r.agents.values():
                     if rec.response.changed:
                         opinion_changes += 1
-        final_agreement = 0
+        final_agreement = 0.0
         if rounds:
             last = rounds[-1]
             final_agreement = sum(1 for rec in last.agents.values() if rec.response.answer_id == final_id) / float(num_agents or 1)
