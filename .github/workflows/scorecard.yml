@@ -22,7 +22,7 @@ jobs:
         with:
           egress-policy: audit
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run analysis
         uses: ossf/scorecard-action@v2.4.3
         with:

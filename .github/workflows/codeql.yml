@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # TODO: pin actions to commit SHAs when repo is online
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: github/codeql-action/init@v4
         with:
           languages: python

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # TODO: pin actions to commit SHAs once repo is online
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate SBOM (Syft)
         uses: anchore/sbom-action@v0.17.6
         with:
