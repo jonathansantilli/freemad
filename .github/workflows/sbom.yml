@@ -1,0 +1,25 @@
+name: SBOM
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+  generate-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: pin actions to commit SHAs once repo is online
+      - uses: actions/checkout@v5
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0.17.6
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: sbom
+          path: sbom.spdx.json

@@ -1,0 +1,34 @@
+name: Scorecards supply-chain security
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: pin actions to commit SHAs when repo is online
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run analysis
+        uses: ossf/scorecard-action@v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif

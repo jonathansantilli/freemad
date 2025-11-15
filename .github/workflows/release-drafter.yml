@@ -1,0 +1,23 @@
+name: Release Drafter
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  update-release-draft:
+    runs-on: ubuntu-latest
+    steps:
+      # TODO: pin to full commit SHA once repo is online
+      - uses: actions/checkout@v5
+      - uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
