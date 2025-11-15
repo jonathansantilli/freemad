@@ -63,7 +63,7 @@ REASONING: bug fix
         res = parse_critique(raw)
         self.assertFalse(res.needs_retry)
         self.assertEqual(res.decision, Decision.REVISE)
-        self.assertEqual(res.solution.strip(), "print(42)")
+        self.assertEqual(res.solution.strip() if res.solution else "", "print(42)")
 
     def test_critique_missing_decision(self):
         raw = """

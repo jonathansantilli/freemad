@@ -154,8 +154,8 @@ class TestOrchestrator(unittest.TestCase):
         )
         # inject delays by modifying the constructed agents after factory
         orch = Orchestrator(cfg)
-        orch.agents["fast"].delay_s = 0.02
-        orch.agents["slow"].delay_s = 0.15
+        orch.agents["fast"].delay_s = 0.02  # type: ignore[attr-defined]
+        orch.agents["slow"].delay_s = 0.15  # type: ignore[attr-defined]
         out = orch.run("do Y", max_rounds=1)
         crit = out["transcript"][1]
         self.assertTrue(crit["deadline_hit_soft"])  # fast done, slow not => quorum unmet at soft
@@ -193,8 +193,8 @@ class TestOrchestrator(unittest.TestCase):
             }
         )
         orch = Orchestrator(cfg)
-        orch.agents["slow1"].delay_s = 0.05
-        orch.agents["slow2"].delay_s = 0.05
+        orch.agents["slow1"].delay_s = 0.05  # type: ignore[attr-defined]
+        orch.agents["slow2"].delay_s = 0.05  # type: ignore[attr-defined]
         out = orch.run("do Z", max_rounds=5)
         # Should have stopped early due to round budget
         self.assertEqual(out.get("early_stop_reason"), "round_time_budget_exceeded")

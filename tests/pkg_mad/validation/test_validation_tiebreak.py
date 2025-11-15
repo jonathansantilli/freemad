@@ -39,8 +39,8 @@ class TestValidationTiebreak(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # we bind two different types to allow distinct config entries
-        register_agent("mock_static1", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "SAFE_ANSWER"))
-        register_agent("mock_static2", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "LEAK sk-TEST-KEY"))
+        register_agent("mock_static1", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "SAFE_ANSWER"))  # type: ignore[arg-type]
+        register_agent("mock_static2", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "LEAK sk-TEST-KEY"))  # type: ignore[arg-type]
 
     def test_tie_broken_by_validator_confidence(self):
         # Equal scores: both keep; Security validator should penalize the one with key-like token
