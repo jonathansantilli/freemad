@@ -10,16 +10,15 @@ jobs:
   generate-sbom:
     runs-on: ubuntu-latest
     steps:
-      # TODO: pin actions to commit SHAs once repo is online
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0.17.6
+        uses: anchore/sbom-action@251a468eed47e5082b105c3ba6ee500c0e65a764 # v0.17.6
         with:
           path: .
           format: spdx-json
           output-file: sbom.spdx.json
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: sbom
           path: sbom.spdx.json

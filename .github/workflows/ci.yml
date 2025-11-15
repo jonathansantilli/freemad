@@ -13,13 +13,12 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
-      # TODO: pin action to commit SHA when repo is online
       - name: Harden Runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -37,7 +36,7 @@ jobs:
         run: |
           pytest -q --cov=freemad --cov-report=term --cov-report=xml --cov-fail-under=80
       - name: Upload coverage
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: coverage-xml-${{ matrix.python-version }}
           path: coverage.xml
@@ -45,13 +44,12 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      # TODO: pin action to commit SHA when repo is online
       - name: Harden Runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: '3.13'
           cache: 'pip'

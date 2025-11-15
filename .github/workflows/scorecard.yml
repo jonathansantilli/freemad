@@ -16,19 +16,18 @@ jobs:
   analysis:
     runs-on: ubuntu-latest
     steps:
-      # TODO: pin actions to commit SHAs when repo is online
       - name: Harden Runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Run analysis
-        uses: ossf/scorecard-action@v2.4.3
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee # v4.31.2
         with:
           sarif_file: results.sarif
