@@ -9,7 +9,10 @@ Production-ready Python implementation of the **Free-MAD** algorithm from the pa
 
 ---
 
-<video src="docs/images/freemad_ui.mp4" width="756" height="407" controls></video>
+
+https://github.com/user-attachments/assets/8408ca39-14fc-4c2c-9959-5bbc78d6fc95
+
+
 
 ## What is Free-MAD?
 
