@@ -1,7 +1,7 @@
 [project]
 # Distribution name for PyPI (distinct from import package "mad")
 name = "freemad"
-version = "1.0.0"
+version = "2.0.0"
 description = "FREE-MAD Orchestrator: Consensus-Free Multi-Agent Debate with CLI adapters, transcripts, dashboard, and tests."
 authors = [
     {name = "Jonathan Santilli", email = "jonathansantilli@gmail.com"}
