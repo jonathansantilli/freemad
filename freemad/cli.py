@@ -1,36 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-import time
-from pathlib import Path
 from typing import Any
 
 from freemad.agents import bootstrap as agent_bootstrap
 from freemad.config import ConfigError, load_config
 from freemad.orchestrator import Orchestrator
+from freemad.utils.transcript import save_transcript
 
 
 PACKAGE_VERSION = "0.1.0"
-
-
-def _save_transcript(result: dict, fmt: str, dirpath: str) -> Path:
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    p = Path(dirpath)
-    p.mkdir(parents=True, exist_ok=True)
-    if fmt == "json":
-        out = p / f"transcript-{ts}.json"
-        out.write_text(json.dumps(result, indent=2), encoding="utf-8")
-        return out
-    else:
-        # minimal markdown summary + embed JSON as fenced block for reproducibility
-        out = p / f"transcript-{ts}.md"
-        lines = [f"# FREE-MAD Run {ts}", "", f"Final answer id: {result.get('final_answer_id')}",
-                 f"Winning agents: {', '.join(result.get('winning_agents', []))}", "", "## Transcript (JSON)",
-                 "```json", json.dumps(result, indent=2), "```"]
-        out.write_text("\n".join(lines), encoding="utf-8")
-        return out
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -108,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     save = args.save_transcript or cfg.output.save_transcript
     if save:
         fmt = args.format or cfg.output.format
-        path = _save_transcript(result, fmt, args.transcript_dir or cfg.output.transcript_dir)
+        path = save_transcript(result, fmt, args.transcript_dir or cfg.output.transcript_dir)
         if args.verbose:
             print(f"Transcript saved to: {path}")
     return 0

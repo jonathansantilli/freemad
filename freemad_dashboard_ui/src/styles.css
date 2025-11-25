@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark theme inspired by new-ui/index.css */
+
+:root {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+
+  --card: 217 33% 17%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 210 40% 98%;
+  --primary-foreground: 222 47% 11%;
+
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 212.7 26.8% 83.9%;
+
+  --radius: 0.75rem;
+
+  /* Agent accent colors */
+  --agent-orange: 25 95% 53%;
+  --agent-teal: 170 90% 45%;
+  --agent-purple: 260 80% 65%;
+  --agent-cyan: 190 90% 50%;
+  --agent-gold: 45 95% 50%;
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Inter", sans-serif;
+
+  background-image:
+    radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 0% 50%, hsl(var(--agent-purple) / 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 100% 50%, hsl(var(--agent-teal) / 0.05) 0%, transparent 40%);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-sans tracking-tight;
+}
+
+.glass-panel {
+  @apply bg-card/30 backdrop-blur-xl border border-white/10 shadow-xl;
+}
+
+.neon-glow {
+  box-shadow: 0 0 20px -5px hsl(var(--primary));
+}

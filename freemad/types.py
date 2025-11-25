@@ -62,3 +62,18 @@ class LogEvent(StrEnum):
     VALIDATION_DONE = "validation_done"
     HEALTH_STATUS = "health_status"
     COMMAND = "command"
+
+
+class RunEventKind(StrEnum):
+    RUN_STARTED = "run_started"
+    RUN_COMPLETED = "run_completed"
+    RUN_FAILED = "run_failed"
+    RUN_BUDGET_EXCEEDED = "run_budget_exceeded"
+    ROUND_STARTED = "round_started"
+    ROUND_COMPLETED = "round_completed"
+    AGENT_GENERATE_STARTED = "agent_generate_started"
+    AGENT_GENERATE_FINISHED = "agent_generate_finished"
+    AGENT_CRITIQUE_STARTED = "agent_critique_started"
+    AGENT_CRITIQUE_FINISHED = "agent_critique_finished"
+    SCORES_UPDATED = "scores_updated"
+    FINAL_ANSWER_SELECTED = "final_answer_selected"

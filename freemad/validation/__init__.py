@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .base import ValidationResult, Validator
 from .manager import ValidationManager
 from .syntax import SyntaxValidator
@@ -14,4 +16,3 @@ __all__ = [
     "SecurityValidator",
     "CoverageValidator",
 ]
-

@@ -1,10 +1,12 @@
 import os
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
 
 from freemad import load_config, AgentConfig, AgentRuntimeConfig
-from freemad import CLIAdapter
+from freemad import CLIAdapter, DiskCache
 
 
 class TestDiskCacheIntegration(unittest.TestCase):
@@ -42,6 +44,18 @@ class TestDiskCacheIntegration(unittest.TestCase):
             os.rmdir(cfg.cache.dir)
         except Exception:
             pass
+
+    def test_eviction_respects_max_entries(self):
+        with tempfile.TemporaryDirectory() as td:
+            cache = DiskCache(dir=td, max_entries=1)
+            cache.set("k1", "v1")
+            time.sleep(0.01)
+            cache.set("k2", "v2")
+            files = list(Path(td).glob("*.json"))
+            # only most recent should remain
+            assert len(files) == 1
+            val = cache.get("k2")
+            assert val == "v2"
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -22,6 +22,12 @@ class TestSandboxValidator(unittest.TestCase):
         self.assertFalse(res.passed)
         self.assertIn("runtime:", " ".join(res.errors))
 
+    def test_blocks_imports_and_dunders(self):
+        sv = SandboxValidator(enabled=True, timeout_ms=500)
+        res = sv.validate("A", "import os\nos.system('echo hi')")
+        self.assertFalse(res.passed)
+        self.assertIn("unsafe", " ".join(res.errors))
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 import concurrent.futures
-from dataclasses import dataclass
 from typing import Dict
 
 from .base import ValidationResult
@@ -35,12 +32,13 @@ SAFE_BUILTINS: Dict[str, object] = {
     "all": all,
     "sorted": sorted,
 }
+UNSAFE_TOKENS = ("import", "__")
 
 
-@dataclass
 class SandboxValidator:
-    enabled: bool = False
-    timeout_ms: int = 500
+    def __init__(self, enabled: bool = False, timeout_ms: int = 500) -> None:
+        self.enabled = enabled
+        self.timeout_ms = timeout_ms
 
     name = ValidatorName.SANDBOX
 
@@ -61,6 +59,8 @@ class SandboxValidator:
         code = canonicalize_solution(text)
         if not code:
             return ValidationResult(passed=False, confidence=0.3, errors=["empty solution"])
+        if any(tok in code for tok in UNSAFE_TOKENS):
+            return ValidationResult(passed=False, confidence=0.2, errors=["unsafe code patterns detected"])
         # Run with a hard timeout via thread executor
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(self._run_code, code)

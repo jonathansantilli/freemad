@@ -1,9 +1,9 @@
 PY = poetry run
 
-.PHONY: help install fmt lint type test cov precommit run dashboard
+.PHONY: help install fmt lint type test cov precommit run dashboard ui-dev ui-build
 
 help:
-	@echo "Targets: install fmt lint type test cov precommit run dashboard"
+	@echo "Targets: install fmt lint type test cov precommit run dashboard ui-dev ui-build"
 
 install:
 	poetry install
@@ -34,3 +34,8 @@ run:
 dashboard:
 	$(PY) freemad-dashboard --dir transcripts
 
+ui-dev:
+	cd freemad_dashboard_ui && npm install && npm run dev
+
+ui-build:
+	cd freemad_dashboard_ui && npm install && npm run build

@@ -75,6 +75,33 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(ConfigError):
             load_config(overrides={"budget": {"max_total_time_sec": -1}})
 
+    def test_budget_tokens_must_be_positive_when_enforced(self):
+        with self.assertRaises(ConfigError):
+            load_config(overrides={"budget": {"enforce_total_tokens": True, "max_total_tokens": -5}})
+
+    def test_invalid_yaml_file_raises(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg_path = Path(tmp) / "bad.yaml"
+            cfg_path.write_text("agents: [", encoding="utf-8")
+            with self.assertRaises(ConfigError):
+                load_config(path=str(cfg_path))
+
+    def test_k_reviewers_cannot_exceed_agents(self):
+        overrides = {
+            "agents": [
+                {"id": "a", "type": "claude_code", "enabled": True, "cli_command": "python"},
+                {"id": "b", "type": "claude_code", "enabled": True, "cli_command": "python"},
+                {"id": "c", "type": "claude_code", "enabled": True, "cli_command": "python"},
+            ],
+            "topology": {"type": "k_reviewers", "k": 3},
+        }
+        with self.assertRaises(ConfigError):
+            load_config(overrides=overrides)
+
+    def test_unknown_agent_type_rejected(self):
+        with self.assertRaises(ConfigError):
+            load_config(overrides={"agents": [{"id": "x", "type": "unknown_adapter"}]})
+
     def test_load_from_json_file_and_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg_path = Path(tmp) / "cfg.json"

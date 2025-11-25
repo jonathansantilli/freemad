@@ -3,10 +3,13 @@
 [![CI](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml)
 [![Scorecard](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jonathansantilli/freemad)
 
 Production-ready Python implementation of the **Free-MAD** algorithm from the paper ["Free-MAD: Consensus-Free Multi-Agent Debate"](https://arxiv.org/html/2509.11035v1).
 
 ---
+
+<video src="docs/images/freemad_ui.mp4" width="756" height="407" controls></video>
 
 ## What is Free-MAD?
 
@@ -348,7 +351,6 @@ Free-MAD includes a web-based dashboard to visualize debate results. The dashboa
 ```bash
 poetry run freemad-dashboard --dir transcripts --host 127.0.0.1 --port 8001
 ```
-![img.png](docs/images/img.png)
 
 Then open your browser to `http://127.0.0.1:8001` to view the results.
 

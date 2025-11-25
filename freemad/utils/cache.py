@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -12,10 +11,10 @@ def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
-@dataclass
 class DiskCache:
-    dir: str
-    max_entries: int | None = None
+    def __init__(self, dir: str, max_entries: int | None = None) -> None:
+        self.dir = dir
+        self.max_entries = max_entries
 
     def _path_for(self, key: str) -> Path:
         h = _sha256(key)
@@ -58,4 +57,3 @@ class DiskCache:
     def make_key(mode: str, agent_id: str, prompt: str, adapter_name: str, temperature: float, max_tokens: int | None) -> str:
         base = f"{mode}|{agent_id}|{adapter_name}|{temperature}|{max_tokens}|"
         return base + _sha256(prompt)
-

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Bootstrap agent registrations.
 
 Importing this module registers built-in adapters with the registry.
@@ -15,4 +17,3 @@ def register_builtin_agents() -> None:
 
 # Register on import for convenience
 register_builtin_agents()
-

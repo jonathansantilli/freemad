@@ -333,10 +333,12 @@ def _maybe_parse_yaml(text: str) -> Dict[str, Any]:
         if not isinstance(data, dict):
             raise ConfigError("YAML root must be a mapping")
         return data
-    except ModuleNotFoundError as e:
-        raise ConfigError(
-            "PyYAML is not installed; provide JSON config or install pyyaml"
-        ) from e
+    except Exception as e:
+        if isinstance(e, ModuleNotFoundError):
+            raise ConfigError(
+                "PyYAML is not installed; provide JSON config or install pyyaml"
+            ) from e
+        raise ConfigError(f"could not parse YAML config: {e}") from e
 
 
 def _load_config_file(path: Path) -> Dict[str, Any]:

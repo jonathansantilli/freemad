@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 
 
 class BudgetExceeded(RuntimeError):
     pass
 
 
-@dataclass
 class BudgetGuard:
-    max_total_time_sec: float | None
-    max_round_time_sec: float | None
-
-    def __post_init__(self) -> None:
+    def __init__(self, max_total_time_sec: float | None, max_round_time_sec: float | None) -> None:
+        self.max_total_time_sec = max_total_time_sec
+        self.max_round_time_sec = max_round_time_sec
         self._start = time.perf_counter()
 
     def check_total(self) -> None:
@@ -58,11 +55,11 @@ def truncate_to_tokens(text: str, max_tokens: int, label: str) -> tuple[str, boo
     return text[:approx_chars] + marker, True
 
 
-@dataclass
 class TokenBudget:
-    max_total_tokens: int | None
-    enforce: bool = False
-    used: int = 0
+    def __init__(self, max_total_tokens: int | None, enforce: bool = False) -> None:
+        self.max_total_tokens = max_total_tokens
+        self.enforce = enforce
+        self.used = 0
 
     def add(self, n: int) -> None:
         if n <= 0:

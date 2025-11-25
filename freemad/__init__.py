@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """FREE-MAD Orchestrator package (public API re-exports).
 
 This module re-exports commonly used classes/functions so imports like
@@ -69,6 +71,8 @@ from freemad.agents.cli_adapter import CLIAdapter  # noqa: E402
 from freemad.topology import build_topology  # noqa: E402
 from freemad.scoring import ScoreTracker  # noqa: E402
 from freemad.orchestrator import Orchestrator  # noqa: E402
+from freemad.run_events import RunEvent, RunObserver, NullObserver, FanOutObserver  # noqa: E402
+from freemad.types import RunEventKind  # noqa: E402
 
 # Validation
 from freemad.validation import ValidationManager  # noqa: E402
@@ -96,6 +100,7 @@ __all__ = [
     "CritMarker",
     "ValidatorName",
     "LogEvent",
+    "RunEventKind",
     # prompts
     "build_generation_prompt",
     "build_critique_prompt",
@@ -130,6 +135,11 @@ __all__ = [
     "build_topology",
     "ScoreTracker",
     "Orchestrator",
+    "RunEvent",
+    "RunEventKind",
+    "RunObserver",
+    "NullObserver",
+    "FanOutObserver",
     # validation
     "ValidationManager",
     "SandboxValidator",

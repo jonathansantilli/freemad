@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .parser import (
     parse_generation,
     parse_critique,
@@ -12,6 +14,5 @@ __all__ = [
     "ParseResultGen",
     "ParseResultCrit",
     "canonicalize_solution",
-    "compute_answer_id",
+    "compute_answer_id"
 ]
-

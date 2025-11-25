@@ -1,0 +1,77 @@
+agents:
+  - id: mock-claude
+    type: claude_code
+    enabled: true
+    cli_command: "python bin/mock_agent.py"
+    cli_mode_arg: true
+    timeout: 60
+    config:
+      temperature: 0.0
+      max_tokens: null
+  - id: mock-codex
+    type: openai_codex
+    enabled: true
+    cli_command: "python bin/mock_agent.py"
+    cli_mode_arg: true
+    timeout: 60
+    config:
+      temperature: 0.0
+      max_tokens: null
+
+topology:
+  type: all_to_all
+  k: null
+  seed: 1
+  hub_agent: null
+
+deadlines:
+  soft_timeout_ms: 200
+  hard_timeout_ms: 1000
+  min_agents: 2
+
+security:
+  api_key_source: null
+  api_key_name: null
+  redact_patterns:
+    - "sk-[A-Za-z0-9_-]+"
+    - "(?i)api[_-]?key"
+  max_requirement_size: 20000
+  max_solution_size: 40000
+  max_critique_size: 20000
+  cli_use_shell: false
+  cli_timeout_ms: 60000
+  cli_allowed_commands:
+    - "python"
+
+budget:
+  max_total_time_sec: 30
+  max_round_time_sec: 10
+  max_agent_time_sec: 5
+  max_tokens_per_agent_per_round: null
+  max_total_tokens: null
+  enforce_total_tokens: false
+  enable_token_truncation: false
+  max_concurrent_agents: null
+
+output:
+  save_transcript: true
+  transcript_dir: transcripts
+  format: json
+  verbose: false
+  include_topology_info: true
+
+logging:
+  level: INFO
+  file: null
+  console: true
+  structured: false
+
+validation:
+  enable_sandbox: false
+  sandbox_timeout_ms: 500
+
+cache:
+  enabled: false
+  dir: ".mad_cache"
+  max_entries: null
+

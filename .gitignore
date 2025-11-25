@@ -17,6 +17,10 @@ build/
 dist/
 *.egg-info/
 
+# Frontend
+node_modules/
+freemad_dashboard_ui/node_modules/
+
 # IDEs
 .idea/
 .vscode/
@@ -26,6 +30,7 @@ dist/
 .mad_cache/
 .benchmarks/
 *.log
+.env*
 
 # Transcripts and artifacts
 transcripts/*.json
@@ -36,3 +41,4 @@ sbom.spdx.json
 
 # OS
 .DS_Store
+coverage.json

@@ -83,7 +83,15 @@ class CLIAdapter(Agent):
                 return hit, 0.0, True
         t0 = time.perf_counter()
         if self.logger:
-            log_event(self.logger, LogEvent.COMMAND, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode)
+            log_event(
+                self.logger,
+                LogEvent.COMMAND,
+                cmd=cmd,
+                cmd_str=" ".join(shlex.quote(part) for part in cmd),
+                timeout=timeout_s,
+                agent=self.agent_cfg.id,
+                mode=mode,
+            )
         proc = subprocess.run(
             cmd,
             input=input_text,
@@ -93,9 +101,33 @@ class CLIAdapter(Agent):
             check=False
         )
         elapsed_ms = (time.perf_counter() - t0) * 1000
-        out = (proc.stdout or proc.stderr or "").strip()
+        stdout = (proc.stdout or "").strip()
+        stderr = (proc.stderr or "").strip()
+        # If the process failed, surface stderr to downstream parsing so the user can see it.
+        if proc.returncode != 0:
+            out = (
+                "SOLUTION:\n"
+                f"CLI execution failed (returncode {proc.returncode}).\n\n"
+                f"STDERR:\n{stderr or '(none)'}\n\nSTDOUT:\n{stdout or '(none)'}\n\n"
+                "REASONING:\nAgent CLI returned an error; see STDERR above."
+            )
+        else:
+            out = stdout if stdout else stderr
         if self.logger:
-            log_event(self.logger, LogEvent.COMMAND, level=logging.DEBUG, cmd=cmd, timeout=timeout_s, agent=self.agent_cfg.id, mode=mode, output=out)
+            log_event(
+                self.logger,
+                LogEvent.COMMAND,
+                level=logging.DEBUG if proc.returncode == 0 else logging.ERROR,
+                cmd=cmd,
+                cmd_str=" ".join(shlex.quote(part) for part in cmd),
+                timeout=timeout_s,
+                agent=self.agent_cfg.id,
+                mode=mode,
+                returncode=proc.returncode,
+                stdout=stdout,
+                stderr=stderr,
+                output=out,
+            )
         # store in cache
         if self._cache is not None:
             try:
