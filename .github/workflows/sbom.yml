@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@251a468eed47e5082b105c3ba6ee500c0e65a764 # v0.17.6
+        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
         with:
           path: .
           format: spdx-json
