@@ -1,5 +1,6 @@
 # FREE-MAD: Consensus-Free Multi-Agent Debate
 
+[![arXiv](https://img.shields.io/badge/arXiv-2509.11035-b31b1b.svg)](https://arxiv.org/abs/2509.11035)
 [![CI](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml)
 [![Scorecard](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml)
