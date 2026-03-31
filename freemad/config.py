@@ -643,6 +643,7 @@ def _ensure_dir(path_str: str, root: Path) -> None:
 
 def _resolve_existing_config_file(path_str: str | os.PathLike[str]) -> Path:
     cfg_file = _resolve_config_file_path(path_str)
+
     # codeql[py/path-injection] `cfg_file` is normalized and extension-restricted in `_resolve_config_file_path`.
     if not cfg_file.exists():
         raise ConfigError(f"config file does not exist: {cfg_file}")
@@ -663,6 +664,7 @@ def _resolve_config_file_path(path_str: str | os.PathLike[str]) -> Path:
 
 def _resolve_path_under_root(path_str: str | os.PathLike[str], root: Path, label: str) -> Path:
     raw = Path(path_str)
+
     # codeql[py/path-injection] the resolved path is checked to remain under `root` before use.
     resolved = raw.resolve() if raw.is_absolute() else (root.resolve() / raw).resolve()
     # codeql[py/path-injection] `root` is a trusted base directory derived from the config location.
