@@ -8,7 +8,9 @@ if sys.version_info >= (3, 11):
 else:
     class StrEnum(str, Enum):  # type: ignore[no-redef]
         """Compatibility StrEnum for Python 3.10"""
-        pass
+
+        def __str__(self) -> str:
+            return str(self.value)
 
 
 class Decision(StrEnum):
