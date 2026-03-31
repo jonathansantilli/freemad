@@ -388,6 +388,7 @@ def _maybe_parse_yaml(text: str) -> Dict[str, Any]:
 
 
 def _load_config_file(path: Path) -> Dict[str, Any]:
+    # codeql[py/path-injection] `path` is normalized and validated by `_resolve_existing_config_file`.
     text = path.read_text(encoding="utf-8")
     ext = path.suffix.lower()
     if ext in (".yaml", ".yml"):
@@ -634,6 +635,7 @@ def load_config(
 def _ensure_dir(path_str: str, root: Path) -> None:
     p = _resolve_path_under_root(path_str, root, "config-managed directory")
     try:
+        # codeql[py/path-injection] `p` is normalized and constrained to the trusted config root.
         p.mkdir(parents=True, exist_ok=True)
     except Exception as e:  # pragma: no cover - defensive
         raise ConfigError(f"failed to create directory {p}: {e}") from e
@@ -641,8 +643,10 @@ def _ensure_dir(path_str: str, root: Path) -> None:
 
 def _resolve_existing_config_file(path_str: str | os.PathLike[str]) -> Path:
     cfg_file = _resolve_config_file_path(path_str)
+    # codeql[py/path-injection] `cfg_file` is normalized and extension-restricted in `_resolve_config_file_path`.
     if not cfg_file.exists():
         raise ConfigError(f"config file does not exist: {cfg_file}")
+    # codeql[py/path-injection] `cfg_file` is normalized and extension-restricted in `_resolve_config_file_path`.
     if not cfg_file.is_file():
         raise ConfigError(f"config path must point to a file: {cfg_file}")
     return cfg_file
@@ -650,6 +654,7 @@ def _resolve_existing_config_file(path_str: str | os.PathLike[str]) -> Path:
 
 def _resolve_config_file_path(path_str: str | os.PathLike[str]) -> Path:
     raw = Path(path_str)
+    # codeql[py/path-injection] the resolved path is validated before any file access occurs.
     resolved = raw.resolve() if raw.is_absolute() else (Path.cwd().resolve() / raw).resolve()
     if resolved.suffix.lower() not in {".json", ".yaml", ".yml"}:
         raise ConfigError(f"config path must point to a .json, .yaml, or .yml file: {resolved}")
@@ -658,7 +663,9 @@ def _resolve_config_file_path(path_str: str | os.PathLike[str]) -> Path:
 
 def _resolve_path_under_root(path_str: str | os.PathLike[str], root: Path, label: str) -> Path:
     raw = Path(path_str)
+    # codeql[py/path-injection] the resolved path is checked to remain under `root` before use.
     resolved = raw.resolve() if raw.is_absolute() else (root.resolve() / raw).resolve()
+    # codeql[py/path-injection] `root` is a trusted base directory derived from the config location.
     trusted_root = root.resolve()
     if resolved != trusted_root and trusted_root not in resolved.parents:
         raise ConfigError(f"{label} must stay within {trusted_root}")
