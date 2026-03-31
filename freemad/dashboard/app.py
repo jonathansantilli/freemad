@@ -24,13 +24,19 @@ import yaml  # type: ignore[import-untyped]
 
 from freemad.config import load_config, ConfigError
 from freemad.dashboard.live_manager import LiveRunManager
-from freemad.types import RunEventKind
+from freemad.dashboard.task_live_manager import TaskLiveManager
+from freemad.dashboard.task_state import apply_task_event, initial_task_snapshot
+from freemad.tasks.orchestrator import TaskOrchestrator
+from freemad.tasks.store import TaskStore
+from freemad.types import RunEventKind, TaskEventKind, TaskStatus, TaskType
 from freemad.agents import bootstrap as agent_bootstrap
 
 
 @dataclass(frozen=True)
 class DashboardConfig:
     transcripts_dir: str = "transcripts"
+    task_store_path: Path = Path(".freemad/tasks/tasks.db")
+    task_artifacts_dir: Path = Path(".freemad/tasks/artifacts")
     override_path: Path | None = None
     override_base: Path | None = None
     enable_csrf: bool = False
@@ -180,9 +186,14 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
 
     live_manager = LiveRunManager()
     app.state.live_manager = live_manager
+    task_live_manager = TaskLiveManager()
+    app.state.task_live_manager = task_live_manager
     override_path = cfg.override_path or DEFAULT_OVERRIDE_PATH
     override_base = cfg.override_base or DEFAULT_OVERRIDE_BASE
     _ensure_user_override_config(override_path, override_base)
+    task_store_path = Path(cfg.task_store_path)
+    task_artifacts_dir = Path(cfg.task_artifacts_dir)
+    task_store = TaskStore(task_store_path, task_artifacts_dir)
 
     class _RateLimiter:
         def __init__(self, limit: int) -> None:
@@ -343,6 +354,117 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         finally:
             await ws.close()
 
+    def _task_payload(task_id: str) -> Dict[str, Any]:
+        task = task_store.get_task(task_id)
+        if task is None:
+            raise HTTPException(status_code=404, detail="task not found")
+        events = task_store.list_events(task_id)
+        snapshot = initial_task_snapshot(task_id)
+        for event in events:
+            snapshot = apply_task_event(snapshot, event)
+        return {
+            **task.to_dict(),
+            "artifacts": [artifact.to_dict() for artifact in task_store.list_artifacts(task_id)],
+            "work_items": [item.to_dict() for item in task_store.list_work_items(task_id)],
+            "events": [event.to_dict() for event in events],
+            "snapshot": {
+                "task_id": snapshot.task_id,
+                "status": snapshot.status.value,
+                "current_stage": snapshot.current_stage.value if snapshot.current_stage is not None else None,
+                "artifact_counts": dict(snapshot.artifact_counts),
+                "completed": snapshot.completed,
+                "error": snapshot.error,
+            },
+        }
+
+    @app.get("/api/tasks", response_class=JSONResponse)
+    def api_tasks() -> List[Dict[str, Any]]:
+        return [task.to_dict() for task in task_store.list_tasks()]
+
+    @app.get("/api/tasks/{task_id}", response_class=JSONResponse)
+    def api_task_detail(task_id: str) -> Dict[str, Any]:
+        return _task_payload(task_id)
+
+    @app.post("/api/tasks", response_class=JSONResponse)
+    async def api_task_start(request: Request) -> Dict[str, Any]:
+        _require_csrf(request)
+        payload = await request.json()
+        goal = str(payload.get("goal", "")).strip()
+        if not goal:
+            raise HTTPException(status_code=400, detail="goal is required")
+        task_type_raw = str(payload.get("task_type", TaskType.PLAN.value)).strip().lower()
+        try:
+            task_type = TaskType(task_type_raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"invalid task_type: {task_type_raw}") from exc
+        workspace_root = str(payload.get("workspace_root", ".")).strip() or "."
+        config_path = payload.get("config_path")
+        overrides = payload.get("overrides")
+        if overrides is not None and not isinstance(overrides, dict):
+            raise HTTPException(status_code=400, detail="overrides must be an object if provided")
+        merged_overrides = dict(overrides or {})
+        task_override = dict(merged_overrides.get("task", {}) or {})
+        task_override.setdefault("store_path", str(task_store_path))
+        task_override.setdefault("artifacts_dir", str(task_artifacts_dir))
+        merged_overrides["task"] = task_override
+        try:
+            cfg_obj = load_config(path=config_path if config_path else None, overrides=merged_overrides)
+        except ConfigError as exc:
+            raise HTTPException(status_code=400, detail=f"config error: {exc}") from exc
+        task_id = task_live_manager.start_task(
+            cfg_obj,
+            goal=goal,
+            task_type=task_type,
+            workspace_root=workspace_root,
+        )
+        return {"task_id": task_id}
+
+    @app.websocket("/ws/tasks/{task_id}")
+    async def ws_task(ws: WebSocket, task_id: str) -> None:
+        await ws.accept()
+        try:
+            sent = 0
+            terminal_deadline: float | None = None
+            terminal_statuses = {
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.PAUSED,
+                TaskStatus.WAITING_FOR_HUMAN,
+            }
+            while True:
+                events = task_store.list_events(task_id)
+                task = task_store.get_task(task_id)
+                if not events and task is None and not task_live_manager.has_task(task_id):
+                    await ws.close(code=1008)
+                    return
+                while sent < len(events):
+                    event = events[sent]
+                    sent += 1
+                    await ws.send_json({"event": event.to_dict()})
+                    await anyio.sleep(0)
+                    if event.kind in (
+                        TaskEventKind.TASK_COMPLETED,
+                        TaskEventKind.TASK_FAILED,
+                        TaskEventKind.TASK_PAUSED,
+                    ):
+                        terminal_deadline = time.monotonic() + 0.5
+                if task is not None and task.status in terminal_statuses:
+                    if terminal_deadline is None:
+                        terminal_deadline = time.monotonic() + 0.5
+                    if time.monotonic() >= terminal_deadline:
+                        return
+                    await anyio.sleep(0.05)
+                    continue
+                terminal_deadline = None
+                if task_live_manager.has_task(task_id) and not task_live_manager.is_completed(task_id):
+                    await anyio.sleep(0.05)
+                    continue
+                await anyio.sleep(0.05)
+        except WebSocketDisconnect:
+            return
+        finally:
+            await ws.close()
+
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
         runs = _list_runs(transcripts_root)
@@ -350,6 +472,29 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             request=request,
             name="index.html",
             context={"runs": runs},
+        )
+        if cfg.enable_csrf:
+            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+        return resp
+
+    @app.get("/tasks", response_class=HTMLResponse)
+    def tasks_index(request: Request) -> HTMLResponse:
+        resp = templates.TemplateResponse(
+            request=request,
+            name="tasks.html",
+            context={"tasks": [task.to_dict() for task in task_store.list_tasks()]},
+        )
+        if cfg.enable_csrf:
+            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+        return resp
+
+    @app.get("/tasks/{task_id}", response_class=HTMLResponse)
+    def task_detail(request: Request, task_id: str) -> HTMLResponse:
+        payload = _task_payload(task_id)
+        resp = templates.TemplateResponse(
+            request=request,
+            name="task.html",
+            context={"task": payload},
         )
         if cfg.enable_csrf:
             resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")

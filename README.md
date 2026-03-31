@@ -15,6 +15,26 @@ https://github.com/user-attachments/assets/8408ca39-14fc-4c2c-9959-5bbc78d6fc95
 
 
 
+## Project Status
+
+FREE-MAD ships two runtimes:
+
+- `debate`: the original consensus-free answer-selection runtime
+- `autonomous`: a persistent task runtime for `plan` and `code` tasks with quorum review, resumable state, and task inspection surfaces
+
+The autonomous runtime is intentionally a first milestone. It supports persisted tasks, staged execution, structured research provenance, policy-bound writes and local commands, human clarification feedback on resume, parallel execution for disjoint work items, CLI task commands, and background dashboard task execution with live event streaming.
+
+### Current Modes
+
+- `debate` mode: implemented and unchanged
+- `autonomous` mode: implemented first milestone for `plan` and `code` tasks
+
+### Design Docs
+
+- [`docs/autonomous-mode.md`](docs/autonomous-mode.md): contributor-facing overview of the shipped autonomous quorum runtime and its current limits
+- [`docs/plans/2026-03-31-autonomous-quorum-runtime-spec.md`](docs/plans/2026-03-31-autonomous-quorum-runtime-spec.md): detailed runtime specification, updated to the implemented first milestone
+- [`docs/plans/2026-03-31-autonomous-quorum-runtime-implementation-plan.md`](docs/plans/2026-03-31-autonomous-quorum-runtime-implementation-plan.md): the test-first rollout plan used to land the initial implementation
+
 ## What is Free-MAD?
 
 Free-MAD is a revolutionary approach to multi-agent AI systems that **eliminates the need for consensus** among agents while achieving better accuracy and efficiency than traditional debate methods.
@@ -78,6 +98,8 @@ This means a single agent with the right answer and strong reasoning can win, ev
 
 ## Quick Start
 
+This section covers both shipped runtimes.
+
 ### Installation
 
 ```bash
@@ -105,6 +127,36 @@ poetry run freemad "Write a function that returns Fibonacci(n)." \
 ```
 
 Both YAML and JSON formats are supported. See `config_examples/multi_agent.yaml` or `config_examples/multi_agent.json` for complete configuration examples.
+
+### Run Your First Autonomous Task
+
+Autonomous mode uses a persistent task store and role-aware agents. The minimal entry point is:
+
+```bash
+poetry run python -m freemad.cli task start \
+  --config path/to/autonomous-config.yaml \
+  --task-type plan \
+  --workspace-root "$PWD" \
+  "Critique this architecture until the agents approve an implementation-ready plan."
+```
+
+Useful follow-up commands:
+
+```bash
+poetry run python -m freemad.cli task status <task_id> --config path/to/autonomous-config.yaml
+poetry run python -m freemad.cli task inspect <task_id> --config path/to/autonomous-config.yaml
+poetry run python -m freemad.cli task resume <task_id> --config path/to/autonomous-config.yaml
+poetry run python -m freemad.cli task answer <task_id> "Use SQLite." --config path/to/autonomous-config.yaml
+poetry run python -m freemad.cli task approve <task_id> plan_review --config path/to/autonomous-config.yaml
+poetry run python -m freemad.cli task pause <task_id> --config path/to/autonomous-config.yaml
+```
+
+The first milestone currently supports:
+
+- `plan` tasks that research, draft, review, arbitrate, and finalize plans
+- `code` tasks that execute work items, run code review, run verification, and finalize
+
+See [`docs/autonomous-mode.md`](docs/autonomous-mode.md) for role requirements, persistence layout, dashboard routes, and current limitations.
 
 ---
 
@@ -174,6 +226,8 @@ Define the AI agents participating in the debate:
 - `timeout`: Per-call timeout in seconds
 - `config.temperature`: Model temperature (0.0-1.0)
 - `config.max_tokens`: Max output tokens (null = unlimited)
+- `roles`: Optional autonomous-task roles such as `researcher`, `planner`, `reviewer`, `implementer`, `verifier`, `arbiter`
+- `capabilities`: Optional autonomous action kinds such as `research`, `plan`, `review`, `implement`, `verify`
 
 ### Topology
 Control how agents review each other's work:
@@ -224,6 +278,18 @@ Control debate round timing:
 - `enabled`: On-disk memoization of agent outputs
 - `dir`: Cache directory
 - `max_entries`: Eviction limit
+
+### Autonomous Tasks
+- `task.store_path`: SQLite database path for task metadata and events
+- `task.artifacts_dir`: Directory for task-scoped artifacts
+- `task.max_stage_retries`: Retry count before arbitration or pause
+- `task.max_total_iterations`: Overall iteration cap for a task
+- `task.tool_policy.allow_web_research`: Whether autonomous tasks may rely on agent-native research tools
+- `task.tool_policy.allow_workspace_write`: Whether autonomous tasks may write to the workspace
+- `task.tool_policy.allowed_write_roots`: Relative roots autonomous writes may touch
+- `task.tool_policy.allow_local_commands`: Whether autonomous tasks may run local commands
+- `task.tool_policy.allowed_local_commands`: Allowlist for task-run commands
+- `task.tool_policy.verification_commands`: Extra commands run during the verification stage
 
 ---
 
@@ -373,6 +439,12 @@ Then open your browser to `http://127.0.0.1:8001` to view the results.
 
 The dashboard is actively being developed. Planned features include:
 
+**Autonomous Task Views:**
+- Persistent task pages distinct from debate transcripts
+- Stage timeline for research, planning, execution, review, and verification
+- Open-questions pane for human clarification and approvals
+- Artifact browser for plans, patches, review notes, and verification logs
+
 **Real-Time Debate Visualization:**
 - Live conversation view showing agent-to-agent interactions
 - Visual timeline of debate rounds
@@ -497,3 +569,30 @@ https://arxiv.org/html/2509.11035v1
 4. **Better efficiency**: Requires fewer debate rounds than consensus-based approaches
 5. **Robustness**: Resistant to conformity bias and communication attacks
 
+---
+
+## Autonomous Runtime
+
+The repository now ships the first autonomous milestone beside the original debate runtime.
+
+Current autonomous properties:
+
+- no single agent can declare a task complete by itself
+- every stage requires at least a proposer and an independent checker
+- disagreement triggers revision, arbitration, or human escalation instead of being hidden
+- long-lived tasks can resume after restart with persisted state and artifacts
+- research, planning, code changes, review, and verification are all first-class stages
+
+Current supported workflows include:
+
+- "Critique this architecture until the agents agree it is implementation-ready."
+- "Implement this approved plan, have another agent review it, and only finish once verification passes."
+- "Ask me a concrete question only when the goal is ambiguous or the next action is risky."
+
+Current first-milestone limits:
+
+- autonomous tasks are still limited to `plan` and `code` workflows
+- publish-side effects such as push, merge, and release actions remain manual
+- live task streaming currently tails persisted task events rather than using a dedicated in-memory pub/sub layer
+
+See the design docs above for the full specification and current implementation notes.
