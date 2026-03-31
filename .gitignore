@@ -35,6 +35,7 @@ freemad_dashboard_ui/node_modules/
 # Transcripts and artifacts
 transcripts/*.json
 transcripts/*.md
+docs/plans/
 .coverage
 coverage.xml
 sbom.spdx.json
