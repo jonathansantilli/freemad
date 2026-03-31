@@ -608,10 +608,10 @@ def load_config(
     - Returns an immutable Config
     """
     base_dict: Dict[str, Any] = to_dict(default_config())
+    config_root = Path.cwd().resolve()
     if path:
-        cfg_file = Path(path)
-        if not cfg_file.exists():
-            raise ConfigError(f"config file does not exist: {cfg_file}")
+        cfg_file = _resolve_existing_config_file(path)
+        config_root = cfg_file.parent
         file_dict = _load_config_file(cfg_file)
         base_dict = _deep_update(base_dict, file_dict)
 
@@ -623,17 +623,43 @@ def load_config(
 
     # Ensure transcript dir exists if requested
     if cfg.output.save_transcript:
-        _ensure_dir(cfg.output.transcript_dir)
+        _ensure_dir(cfg.output.transcript_dir, config_root)
     # Ensure cache dir if enabled
     if cfg.cache.enabled and cfg.cache.dir:
-        _ensure_dir(cfg.cache.dir)
+        _ensure_dir(cfg.cache.dir, config_root)
 
     return cfg
 
 
-def _ensure_dir(path_str: str) -> None:
-    p = Path(path_str)
+def _ensure_dir(path_str: str, root: Path) -> None:
+    p = _resolve_path_under_root(path_str, root, "config-managed directory")
     try:
         p.mkdir(parents=True, exist_ok=True)
     except Exception as e:  # pragma: no cover - defensive
         raise ConfigError(f"failed to create directory {p}: {e}") from e
+
+
+def _resolve_existing_config_file(path_str: str | os.PathLike[str]) -> Path:
+    cfg_file = _resolve_config_file_path(path_str)
+    if not cfg_file.exists():
+        raise ConfigError(f"config file does not exist: {cfg_file}")
+    if not cfg_file.is_file():
+        raise ConfigError(f"config path must point to a file: {cfg_file}")
+    return cfg_file
+
+
+def _resolve_config_file_path(path_str: str | os.PathLike[str]) -> Path:
+    raw = Path(path_str)
+    resolved = raw.resolve() if raw.is_absolute() else (Path.cwd().resolve() / raw).resolve()
+    if resolved.suffix.lower() not in {".json", ".yaml", ".yml"}:
+        raise ConfigError(f"config path must point to a .json, .yaml, or .yml file: {resolved}")
+    return resolved
+
+
+def _resolve_path_under_root(path_str: str | os.PathLike[str], root: Path, label: str) -> Path:
+    raw = Path(path_str)
+    resolved = raw.resolve() if raw.is_absolute() else (root.resolve() / raw).resolve()
+    trusted_root = root.resolve()
+    if resolved != trusted_root and trusted_root not in resolved.parents:
+        raise ConfigError(f"{label} must stay within {trusted_root}")
+    return resolved
