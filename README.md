@@ -1,5 +1,6 @@
 # FREE-MAD: Consensus-Free Multi-Agent Debate
 
+[![arXiv](https://img.shields.io/badge/arXiv-2509.11035-b31b1b.svg)](https://arxiv.org/abs/2509.11035)
 [![CI](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/codeql.yml)
 [![Scorecard](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml/badge.svg)](https://github.com/jonathansantilli/mad/actions/workflows/scorecard.yml)
@@ -9,7 +10,10 @@ Production-ready Python implementation of the **Free-MAD** algorithm from the pa
 
 ---
 
-<video src="docs/images/freemad_ui.mp4" width="756" height="407" controls></video>
+
+https://github.com/user-attachments/assets/8408ca39-14fc-4c2c-9959-5bbc78d6fc95
+
+
 
 ## Project Status
 
