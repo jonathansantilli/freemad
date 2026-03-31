@@ -424,6 +424,7 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         await ws.accept()
         try:
             sent = 0
+            terminal_grace_deadline: float | None = None
             terminal_statuses = {
                 TaskStatus.COMPLETED,
                 TaskStatus.FAILED,
@@ -445,9 +446,17 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
                         TaskEventKind.TASK_FAILED,
                         TaskEventKind.TASK_PAUSED,
                     ):
+                        await anyio.sleep(0)
                         return
                 if task is not None and task.status in terminal_statuses:
+                    if sent == 0:
+                        if terminal_grace_deadline is None:
+                            terminal_grace_deadline = time.monotonic() + 0.5
+                        if time.monotonic() < terminal_grace_deadline:
+                            await anyio.sleep(0.05)
+                            continue
                     return
+                terminal_grace_deadline = None
                 if task_live_manager.has_task(task_id) and not task_live_manager.is_completed(task_id):
                     await anyio.sleep(0.05)
                     continue
