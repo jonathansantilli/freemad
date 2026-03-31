@@ -16,6 +16,8 @@ from freemad.config import (
     AgentConfig,
     AgentRuntimeConfig,
     SecurityConfig,
+    TaskConfig,
+    TaskToolPolicyConfig,
 )
 
 # Types/enums
@@ -28,10 +30,21 @@ from freemad.types import (  # noqa: E402
     CritMarker,
     ValidatorName,
     LogEvent,
+    RuntimeMode,
+    TaskType,
+    TaskRole,
+    TaskStage,
+    TaskOutcome,
+    ActionKind,
+    ReviewDecision,
+    TaskStatus,
+    ArtifactKind,
+    WorkItemStatus,
+    TaskEventKind,
 )
 
 # Prompts
-from freemad.prompts import build_generation_prompt, build_critique_prompt  # noqa: E402
+from freemad.prompts import build_generation_prompt, build_critique_prompt, build_task_prompt  # noqa: E402
 
 # Utils
 from freemad.utils import (  # noqa: E402
@@ -73,6 +86,20 @@ from freemad.scoring import ScoreTracker  # noqa: E402
 from freemad.orchestrator import Orchestrator  # noqa: E402
 from freemad.run_events import RunEvent, RunObserver, NullObserver, FanOutObserver  # noqa: E402
 from freemad.types import RunEventKind  # noqa: E402
+from freemad.task_events import TaskEvent, TaskObserver, NullTaskObserver, FanOutTaskObserver  # noqa: E402
+from freemad.tasks import (  # noqa: E402
+    ArtifactRef,
+    FileWrite,
+    ReviewRecord,
+    SourceRecord,
+    StageAttempt,
+    TaskRequest,
+    TaskResponse,
+    TaskSnapshot,
+    TaskStore,
+    WorkItem,
+)
+from freemad.tasks.orchestrator import TaskOrchestrator  # noqa: E402
 
 # Validation
 from freemad.validation import ValidationManager  # noqa: E402
@@ -91,6 +118,8 @@ __all__ = [
     "AgentConfig",
     "AgentRuntimeConfig",
     "SecurityConfig",
+    "TaskConfig",
+    "TaskToolPolicyConfig",
     # enums
     "Decision",
     "RoundType",
@@ -101,9 +130,21 @@ __all__ = [
     "ValidatorName",
     "LogEvent",
     "RunEventKind",
+    "RuntimeMode",
+    "TaskType",
+    "TaskRole",
+    "TaskStage",
+    "TaskOutcome",
+    "ActionKind",
+    "ReviewDecision",
+    "TaskStatus",
+    "ArtifactKind",
+    "WorkItemStatus",
+    "TaskEventKind",
     # prompts
     "build_generation_prompt",
     "build_critique_prompt",
+    "build_task_prompt",
     # utils
     "parse_generation",
     "parse_critique",
@@ -140,6 +181,21 @@ __all__ = [
     "RunObserver",
     "NullObserver",
     "FanOutObserver",
+    "TaskEvent",
+    "TaskObserver",
+    "NullTaskObserver",
+    "FanOutTaskObserver",
+    "ArtifactRef",
+    "FileWrite",
+    "ReviewRecord",
+    "SourceRecord",
+    "StageAttempt",
+    "TaskRequest",
+    "TaskResponse",
+    "TaskSnapshot",
+    "TaskStore",
+    "TaskOrchestrator",
+    "WorkItem",
     # validation
     "ValidationManager",
     "SandboxValidator",

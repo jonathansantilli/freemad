@@ -119,6 +119,67 @@ class TestConfig(unittest.TestCase):
             self.assertTrue(cfg.output.verbose)
             self.assertTrue(Path(cfg.output.transcript_dir).exists())
 
+    def test_autonomous_enums_use_string_values(self):
+        from freemad.types import ActionKind, TaskRole, TaskStage, TaskStatus
+
+        self.assertEqual(TaskStage.INTAKE.value, "intake")
+        self.assertEqual(TaskStage.VERIFY.value, "verify")
+        self.assertEqual(str(TaskRole.PLANNER), "planner")
+        self.assertEqual(TaskStatus.WAITING_FOR_HUMAN.value, "waiting_for_human")
+        self.assertEqual(ActionKind.RUN_COMMAND.value, "run_command")
+
+    def test_autonomous_task_config_loads_from_yaml(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg_path = Path(tmp) / "autonomous.yaml"
+            cfg_path.write_text(
+                """
+agents:
+  - id: planner_a
+    type: claude_code
+    roles: ["planner", "reviewer"]
+  - id: implementer_b
+    type: openai_codex
+    roles: ["implementer", "verifier"]
+task:
+  store_path: ".freemad/tasks/tasks.db"
+  artifacts_dir: ".freemad/tasks/artifacts"
+  max_stage_retries: 3
+  max_total_iterations: 12
+  tool_policy:
+    allow_web_research: true
+    allow_workspace_write: true
+    allow_local_commands: true
+    allowed_write_roots: ["freemad", "tests"]
+    allowed_local_commands: ["python3", "pytest"]
+    verification_commands: ["pytest -q"]
+""".strip(),
+                encoding="utf-8",
+            )
+
+            cfg = load_config(path=str(cfg_path))
+
+            self.assertEqual(cfg.task.store_path, ".freemad/tasks/tasks.db")
+            self.assertEqual(cfg.task.artifacts_dir, ".freemad/tasks/artifacts")
+            self.assertEqual(cfg.task.max_stage_retries, 3)
+            self.assertEqual(cfg.task.max_total_iterations, 12)
+            self.assertEqual([role.value for role in cfg.agents[0].roles], ["planner", "reviewer"])
+            self.assertEqual([role.value for role in cfg.agents[1].roles], ["implementer", "verifier"])
+            self.assertTrue(cfg.task.tool_policy.allow_web_research)
+            self.assertEqual(cfg.task.tool_policy.allowed_write_roots, ["freemad", "tests"])
+            self.assertEqual(cfg.task.tool_policy.allowed_local_commands, ["python3", "pytest"])
+            self.assertEqual(cfg.task.tool_policy.verification_commands, ["pytest -q"])
+
+    def test_invalid_autonomous_role_is_rejected(self):
+        with self.assertRaises(ConfigError):
+            load_config(
+                overrides={
+                    "agents": [
+                        {"id": "a", "type": "claude_code", "roles": ["planner", "not-a-role"]},
+                        {"id": "b", "type": "openai_codex", "roles": ["reviewer"]},
+                    ]
+                }
+            )
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

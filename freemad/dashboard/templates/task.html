@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mb-6">
+  <div class="text-sm text-slate-500 font-mono">{{ task.task_id }}</div>
+  <h2 class="text-xl font-semibold">{{ task.goal }}</h2>
+</div>
+
+<div class="grid md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Status</div>
+    <div class="text-lg font-semibold">{{ task.status }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Stage</div>
+    <div class="text-lg font-semibold">{{ task.current_stage }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Artifacts</div>
+    <div class="text-lg font-semibold">{{ task.artifacts|length }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Events</div>
+    <div class="text-lg font-semibold">{{ task.events|length }}</div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-3">Artifacts</h3>
+    {% if task.artifacts %}
+      <ul class="space-y-2 text-sm">
+      {% for artifact in task.artifacts %}
+        <li class="border border-slate-200 rounded p-3">
+          <div class="font-medium">{{ artifact.kind }}</div>
+          <div class="text-xs text-slate-500 font-mono">{{ artifact.path }}</div>
+          {% if artifact.summary %}<div class="mt-1 text-slate-700">{{ artifact.summary }}</div>{% endif %}
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <div class="text-sm text-slate-500">No artifacts recorded.</div>
+    {% endif %}
+  </div>
+
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-3">Events</h3>
+    {% if task.events %}
+      <ul class="space-y-2 text-sm">
+      {% for event in task.events %}
+        <li class="border border-slate-200 rounded p-3">
+          <div class="font-medium">{{ event.kind }}</div>
+          {% if event.stage %}<div class="text-xs text-slate-500">Stage: {{ event.stage }}</div>{% endif %}
+          {% if event.message %}<div class="mt-1 text-slate-700">{{ event.message }}</div>{% endif %}
+          {% if event.error %}<div class="mt-1 text-red-600">{{ event.error }}</div>{% endif %}
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <div class="text-sm text-slate-500">No events recorded.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

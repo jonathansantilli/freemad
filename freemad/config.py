@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
-from freemad.types import TieBreak
+from freemad.types import ActionKind, TaskRole, TieBreak
 
 
 class ConfigError(ValueError):
@@ -42,6 +42,8 @@ class AgentConfig:
     cli_flags: List[str] = field(default_factory=list)
     # Extra positional args appended at the very end (order preserved), e.g., ['-']
     cli_positional: List[str] = field(default_factory=list)
+    roles: List[TaskRole] = field(default_factory=list)
+    capabilities: List[ActionKind] = field(default_factory=list)
 
 
 TopologyType = Literal["all_to_all", "k_reviewers", "ring", "star"]
@@ -133,6 +135,27 @@ class CacheConfig:
 
 
 @dataclass(frozen=True)
+class TaskToolPolicyConfig:
+    allow_web_research: bool = True
+    allow_workspace_write: bool = True
+    allow_local_commands: bool = True
+    allowed_write_roots: List[str] = field(default_factory=lambda: ["."])
+    allowed_local_commands: List[str] = field(
+        default_factory=lambda: ["python", "python3", "pytest", "poetry", "ruff", "mypy"]
+    )
+    verification_commands: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class TaskConfig:
+    store_path: str = ".freemad/tasks/tasks.db"
+    artifacts_dir: str = ".freemad/tasks/artifacts"
+    max_stage_retries: int = 2
+    max_total_iterations: int = 20
+    tool_policy: TaskToolPolicyConfig = field(default_factory=TaskToolPolicyConfig)
+
+
+@dataclass(frozen=True)
 class Config:
     agents: List[AgentConfig]
     topology: TopologyConfig = field(default_factory=TopologyConfig)
@@ -144,6 +167,7 @@ class Config:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
+    task: TaskConfig = field(default_factory=TaskConfig)
 
 
 # ----------------------
@@ -211,6 +235,10 @@ def _validate_agents(agents: List[AgentConfig]) -> None:
             raise ConfigError("each agent requires non-empty id and type")
         if a.timeout is not None and a.timeout <= 0:
             raise ConfigError(f"agent {a.id} timeout must be > 0")
+        if any(not isinstance(role, TaskRole) for role in a.roles):
+            raise ConfigError(f"agent {a.id} roles must be valid task roles")
+        if any(not isinstance(capability, ActionKind) for capability in a.capabilities):
+            raise ConfigError(f"agent {a.id} capabilities must be valid action kinds")
 
 
 def _validate_topology(top: TopologyConfig, agents: List[AgentConfig]) -> None:
@@ -293,6 +321,23 @@ def _validate_logging(log: LoggingConfig) -> None:
         raise ConfigError("logging.level must be DEBUG|INFO|WARNING|ERROR")
 
 
+def _validate_task(task: TaskConfig) -> None:
+    if not task.store_path:
+        raise ConfigError("task.store_path must be non-empty")
+    if not task.artifacts_dir:
+        raise ConfigError("task.artifacts_dir must be non-empty")
+    if task.max_stage_retries < 0:
+        raise ConfigError("task.max_stage_retries must be >= 0")
+    if task.max_total_iterations <= 0:
+        raise ConfigError("task.max_total_iterations must be > 0")
+    if not all(isinstance(root, str) and root.strip() for root in task.tool_policy.allowed_write_roots):
+        raise ConfigError("task.tool_policy.allowed_write_roots must be non-empty strings")
+    if not all(isinstance(cmd, str) and cmd.strip() for cmd in task.tool_policy.allowed_local_commands):
+        raise ConfigError("task.tool_policy.allowed_local_commands must be non-empty strings")
+    if not all(isinstance(cmd, str) and cmd.strip() for cmd in task.tool_policy.verification_commands):
+        raise ConfigError("task.tool_policy.verification_commands must be non-empty strings")
+
+
 def validate_config(cfg: Config) -> None:
     _validate_agents(cfg.agents)
     _validate_topology(cfg.topology, cfg.agents)
@@ -308,6 +353,7 @@ def validate_config(cfg: Config) -> None:
     # cache config
     if not cfg.cache.dir:
         raise ConfigError("cache.dir must be non-empty")
+    _validate_task(cfg.task)
 
 
 # ----------------------
@@ -383,6 +429,8 @@ def _coerce_agent(obj: Dict[str, Any]) -> AgentConfig:
         cli_args={str(k): str(v) for k, v in dict(obj.get("cli_args", {}) or {}).items()},
         cli_flags=[str(x) for x in list(obj.get("cli_flags", []) or [])],
         cli_positional=[str(x) for x in list(obj.get("cli_positional", []) or [])],
+        roles=[_coerce_task_role(x) for x in list(obj.get("roles", []) or [])],
+        capabilities=[_coerce_action_kind(x) for x in list(obj.get("capabilities", []) or [])],
     )
 
 
@@ -421,6 +469,26 @@ def _coerce_tiebreak(v: Any) -> TieBreak:
     raise ConfigError("scoring.tie_break must be deterministic|random")
 
 
+def _coerce_task_role(v: Any) -> TaskRole:
+    if isinstance(v, TaskRole):
+        return v
+    s = str(v).strip().lower()
+    for role in TaskRole:
+        if role.value == s:
+            return role
+    raise ConfigError(f"invalid task role: {v}")
+
+
+def _coerce_action_kind(v: Any) -> ActionKind:
+    if isinstance(v, ActionKind):
+        return v
+    s = str(v).strip().lower()
+    for action in ActionKind:
+        if action.value == s:
+            return action
+    raise ConfigError(f"invalid action kind: {v}")
+
+
 def _coerce(cfg_dict: Dict[str, Any]) -> Config:
     agents_list = cfg_dict.get("agents")
     if not agents_list:
@@ -439,6 +507,8 @@ def _coerce(cfg_dict: Dict[str, Any]) -> Config:
     logging = cfg_dict.get("logging", {})
     validation = cfg_dict.get("validation", {})
     cache = cfg_dict.get("cache", {})
+    task = cfg_dict.get("task", {})
+    task_tool_policy = dict(task.get("tool_policy", {}) or {})
 
     cfg = Config(
         agents=agents,
@@ -501,6 +571,25 @@ def _coerce(cfg_dict: Dict[str, Any]) -> Config:
             enabled=bool(cache.get("enabled", False)),
             dir=str(cache.get("dir", ".mad_cache")),
             max_entries=_opt_int(cache.get("max_entries")),
+        ),
+        task=TaskConfig(
+            store_path=str(task.get("store_path", TaskConfig().store_path)),
+            artifacts_dir=str(task.get("artifacts_dir", TaskConfig().artifacts_dir)),
+            max_stage_retries=int(task.get("max_stage_retries", TaskConfig().max_stage_retries)),
+            max_total_iterations=int(task.get("max_total_iterations", TaskConfig().max_total_iterations)),
+            tool_policy=TaskToolPolicyConfig(
+                allow_web_research=bool(task_tool_policy.get("allow_web_research", True)),
+                allow_workspace_write=bool(task_tool_policy.get("allow_workspace_write", True)),
+                allow_local_commands=bool(task_tool_policy.get("allow_local_commands", True)),
+                allowed_write_roots=list(task_tool_policy.get("allowed_write_roots", ["."])),
+                allowed_local_commands=list(
+                    task_tool_policy.get(
+                        "allowed_local_commands",
+                        TaskToolPolicyConfig().allowed_local_commands,
+                    )
+                ),
+                verification_commands=list(task_tool_policy.get("verification_commands", [])),
+            ),
         ),
     )
     return cfg

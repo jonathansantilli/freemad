@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-lg font-semibold">Autonomous Tasks</h2>
+  <div class="text-sm text-slate-500">Showing {{ tasks|length }} task(s)</div>
+</div>
+
+{% if tasks %}
+  <div class="overflow-x-auto bg-white shadow rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100">
+        <tr>
+          <th scope="col" class="text-left px-4 py-2">Task ID</th>
+          <th scope="col" class="text-left px-4 py-2">Status</th>
+          <th scope="col" class="text-left px-4 py-2">Stage</th>
+          <th scope="col" class="text-left px-4 py-2">Goal</th>
+          <th scope="col" class="text-left px-4 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for task in tasks %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-2 font-mono">{{ task.task_id }}</td>
+          <td class="px-4 py-2">{{ task.status }}</td>
+          <td class="px-4 py-2">{{ task.current_stage }}</td>
+          <td class="px-4 py-2">{{ task.goal }}</td>
+          <td class="px-4 py-2"><a class="text-blue-600 hover:underline" href="/tasks/{{ task.task_id }}">View</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="bg-white shadow rounded-lg p-6 text-center text-slate-700">
+    <div class="text-lg font-semibold mb-2">No tasks yet</div>
+    <p class="text-sm text-slate-500">Create a task through the CLI or dashboard API to inspect autonomous task state here.</p>
+  </div>
+{% endif %}
+{% endblock %}
+

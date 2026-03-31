@@ -6,10 +6,13 @@ import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from freemad import AgentConfig, Config
-from freemad import Decision
+from freemad.config import AgentConfig, Config
+from freemad.types import Decision
+
+if TYPE_CHECKING:
+    from freemad.tasks.models import TaskRequest, TaskResponse
 
 
 @dataclass(frozen=True)
@@ -67,6 +70,9 @@ class Agent(abc.ABC):
         self, requirement: str, own_response: str, peer_responses: List[str]
     ) -> CritiqueResponse:
         ...
+
+    def act(self, request: TaskRequest) -> TaskResponse:
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement autonomous task actions")
 
     def health(self) -> HealthStatus:
         """Default health check: verify cli_command exists and responds to --version.

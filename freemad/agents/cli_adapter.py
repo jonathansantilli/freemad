@@ -8,7 +8,8 @@ from typing import Any, List, Optional, Tuple
 import json
 
 from freemad.config import AgentConfig, Config, ConfigError
-from freemad.prompts import build_generation_prompt, build_critique_prompt
+from freemad.prompts import build_critique_prompt, build_generation_prompt, build_task_prompt
+from freemad.tasks.models import TaskRequest, TaskResponse
 from freemad.types import Decision, LogEvent
 from freemad.utils import parse_generation, parse_critique, compute_answer_id
 from freemad.utils.budget import enforce_size, truncate_to_tokens, approx_tokens
@@ -199,4 +200,34 @@ class CLIAdapter(Agent):
             reasoning=parsed.reasoning,
             answer_id=ans_id,
             metadata=Metadata(timings={"elapsed_ms": elapsed_ms, "cached": 1.0 if cached else 0.0}, tokens={"prompt": tokens_in, "output": tokens_out}),
+        )
+
+    def act(self, request: TaskRequest) -> TaskResponse:
+        prompt = build_task_prompt(request)
+        if self.cfg.budget.enable_token_truncation and self.cfg.budget.max_tokens_per_agent_per_round is not None:
+            prompt, _ = truncate_to_tokens(prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="task_prompt")
+        raw, _elapsed_ms, _cached = self._run_cli(prompt, mode=f"task-{request.stage.value}")
+        return self._parse_task_response(raw, request=request)
+
+    def _parse_task_response(self, raw: str, *, request: TaskRequest) -> TaskResponse:
+        text = raw.strip()
+        if text.startswith("```"):
+            lines = [line for line in text.splitlines() if not line.startswith("```")]
+            text = "\n".join(lines).strip()
+        try:
+            return TaskResponse.from_dict(json.loads(text))
+        except Exception:
+            pass
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return TaskResponse.from_dict(json.loads(text[start : end + 1]))
+            except Exception:
+                pass
+        return TaskResponse(
+            agent_id=self.agent_cfg.id,
+            stage=request.stage,
+            role=request.role,
+            content=text,
         )
