@@ -346,7 +346,11 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
         runs = _list_runs(transcripts_root)
-        resp = templates.TemplateResponse("index.html", {"request": request, "runs": runs})
+        resp = templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={"runs": runs},
+        )
         if cfg.enable_csrf:
             resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
         return resp
@@ -417,7 +421,11 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         fid = obj.get("final_answer_id")
         if fid and obj.get("score_explainers"):
             obj["winner_score_history"] = obj["score_explainers"].get(fid, [])
-        resp = templates.TemplateResponse("run.html", {"request": request, "run": obj})
+        resp = templates.TemplateResponse(
+            request=request,
+            name="run.html",
+            context={"run": obj},
+        )
         if cfg.enable_csrf:
             resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
         return resp
