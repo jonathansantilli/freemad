@@ -667,6 +667,64 @@ use `python3` (the allowlist matches `cmd[0]` by name). The comparison harness i
 Final verification: a clean export of `f8ac05c`, full suite, PATH restricted to
 `/usr/bin:/bin` — passes.
 
+### Round 15 — the pre-existing test, and what CI actually runs (2026-08-26)
+
+Asked whether the one pre-existing failure was still worth keeping, I looked at what it
+protects. `test_health_with_allowed_python` is the only success-path coverage of
+`Agent.health()`, which backs `freemad --health` — so it stays. But it configured a bare
+`python` as the stand-in agent CLI, which resolves only with a venv on PATH (macOS ships
+no `/usr/bin/python`): it was asserting an accident of `poetry run`, and its failure read
+as "health() is broken". Now `sys.executable`, in both the command and the allowlist
+(`4544cf7`).
+
+Checking that fix the way CI would check it turned up something larger. CI's type step is
+`mypy .` — also the Makefile's `type` target. It is clean at `origin/main` and was broken
+by the evolve commits. Every "mypy clean" earlier in this log came from running mypy on
+the changed files, never on `.`: true statements about a check CI does not run. Two
+causes:
+
+- `examples/evolve_dependency_update` reaches its vendored module by two names
+  (`vendored_lib` off a `sys.path` insert in the benchmark, `vendor.vendored_lib` from the
+  app). Under crawling that is a module-name collision, and mypy stopped there before
+  checking anything else. The examples are evolve *targets* the agent rewrites, not the
+  package; `mypy.ini` now excludes them.
+- Behind it, 34 errors in 10 test files: config dataclasses built with bare strings where
+  `GateOp`/`CompareDirection` are expected, a generator fixture annotated as its yielded
+  type, `**kwargs` from an untyped dict, monkeypatching `_run_cli` on a variable typed as
+  the base `Agent`, a lambda using `list.append`'s `None`, a dead assignment to an
+  attribute the orchestrator no longer has, and `import yaml` — PyYAML has no stubs, CI
+  installs none, and the global `ignore_missing_imports` is deliberately not honoured for
+  typeshed's legacy bundled packages, so it has to be per-module. Annotating
+  `build_orchestrator`'s return type then surfaced four more, two of them
+  `ScoreVector.get` returning `Optional[float]` even with a default — fixed at the source
+  with `dict.get`-style overloads (`b784dc5`).
+
+CI also runs the matrix on Python 3.10–3.13 with `--cov-fail-under=80`, and installs
+whatever `pip install mypy` resolves to today — 2.3.1, against the pinned 1.18.2. So the
+replay used a `uv`-built 3.10 environment with CI's exact install line. `mypy .` is clean
+under both versions; coverage is 88% (`freemad` only, as CI measures it).
+
+That replay caught a third instance of the PATH assumption, one `f8ac05c` had kept on
+purpose: the container tests use the image's own `python`, but the *contrast* test — the
+run without a container that shows `~/.claude` is visible from a judge stage — executes
+on the host. The condition that exposes it is Docker reachable *and* no venv on PATH. The
+earlier clean-export check restricted PATH to `/usr/bin:/bin`, which drops
+`/usr/local/bin` and Docker with it, so the whole class skipped and the assumption
+survived. The host-side run now uses `sys.executable` (`835bf96`).
+
+Two lessons for this log. "Clean" has to name the command CI runs, not a convenient
+subset of it. And a harsh-condition check that silently skips a test class is not harsh
+for that class — the tightened condition keeps Docker reachable.
+
+Final verification, on a clean export of `835bf96` with `freemad` resolving inside the
+export: `mypy .` clean under mypy 2.3.1; Python 3.10, Docker reachable, CI's coverage
+gate — 369 passed, 2 skipped, coverage 88.48%; Python 3.13 with
+`PATH=/usr/bin:/bin:/usr/local/bin` (no `python` on it, Docker on it) — 369 passed,
+2 skipped. The two skips are the `SMOKE=1`-gated adapter test and a supervisor test
+marked as covered by M1. The one warning on 3.10 is a `StarletteDeprecationWarning`
+raised inside `fastapi/testclient.py` by the newest pip-resolved Starlette — a
+dependency's notice, not ours.
+
 ### Process notes
 
 - I picked the `security-auditor` agent type for the security lens; its toolset is
