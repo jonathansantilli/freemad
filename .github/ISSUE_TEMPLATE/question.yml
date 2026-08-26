@@ -1,0 +1,17 @@
+name: Question
+description: Ask how to use or configure FREE-MAD
+labels: [question]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do, and what happened?
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Config and command
+      description: The config (secrets redacted) and the exact command, if relevant
+      render: yaml

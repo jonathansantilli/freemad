@@ -52,3 +52,23 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
 - `evolve.repo_path` and `store_path` resolve against the config file's directory, as
   every other config-managed path does
 - Judge stage commands are split with `shlex`, so quoted arguments survive
+
+### Changed
+- `freemad --version` reports the installed package version. It was a hard-coded `0.1.0`,
+  and the package carried a second, different `__version__`; both now come from the
+  distribution metadata
+- `output.transcript_dir` and `cache.dir` are created and confined relative to the working
+  directory — where they are written — instead of beside the config file, which created a
+  phantom directory next to the config and rejected overrides the write path accepted
+- `bin/structured_human_task_mock.py` and `config_examples/autonomous_ui_smoke.yaml` speak
+  the autonomous runtime's actual human-in-the-loop protocol (reviewer findings, arbiter,
+  `HUMAN_INPUT` feedback on resume); the README's autonomous quick start runs to completion
+  with no credentials and is covered by a `SMOKE=1` test
+- Repository links use the canonical `jonathansantilli/freemad` name. GitHub Discussions are
+  not enabled, so questions go through a new *Question* issue template
+
+### Fixed
+- README audited against the code: dead design-doc links removed, the evolve runtime
+  documented (quick start, CLI, configuration, dashboard, citation), the agent CLI contract
+  corrected (the mode argument is opt-in via `cli_mode_arg`; critique replies start with
+  `DECISION:`), and the dashboard described as shipped rather than as a roadmap

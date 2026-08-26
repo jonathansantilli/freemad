@@ -31,27 +31,30 @@ could ever gate a commit, the design is broken.
 
 ## Quick start
 
+`freemad` is the console script the package installs; inside the repository `poetry run
+freemad …` finds it, elsewhere put the environment's `bin/` on your PATH.
+
 ```bash
 # 0. Validate config, repo cleanliness, and dry-run the judge on the seed
-python -m freemad.cli evolve validate --config evolve.yaml
+freemad evolve validate --config evolve.yaml
 
 # 1. Start an unattended optimization run
-python -m freemad.cli evolve start --config evolve.yaml "make slow_sum as fast as possible"
+freemad evolve start --config evolve.yaml "make slow_sum as fast as possible"
 
 # 2. Observe (every subcommand takes --config: it names the store to read)
-python -m freemad.cli evolve status   <run_id> --config evolve.yaml
-python -m freemad.cli evolve inspect  <run_id> --config evolve.yaml
-python -m freemad.cli evolve report   <run_id> --config evolve.yaml
+freemad evolve status   <run_id> --config evolve.yaml
+freemad evolve inspect  <run_id> --config evolve.yaml
+freemad evolve report   <run_id> --config evolve.yaml
 
 # 3. Intervene or stop
-python -m freemad.cli evolve pause    <run_id> --config evolve.yaml
-python -m freemad.cli evolve resume   <run_id> --config evolve.yaml
-python -m freemad.cli evolve stop     <run_id> --config evolve.yaml
+freemad evolve pause    <run_id> --config evolve.yaml
+freemad evolve resume   <run_id> --config evolve.yaml
+freemad evolve stop     <run_id> --config evolve.yaml
 
 # 4. If escalated, either guide...
-python -m freemad.cli evolve answer <run_id> "try memoizing partial sums" --config evolve.yaml
+freemad evolve answer <run_id> "try memoizing partial sums" --config evolve.yaml
 # ...or decline (a valid clean stop; no guidance text needed)
-python -m freemad.cli evolve answer <run_id> --decline --config evolve.yaml
+freemad evolve answer <run_id> --decline --config evolve.yaml
 ```
 
 A runnable proving ground lives in `examples/evolve_toy/` (with a comparison
@@ -141,8 +144,11 @@ evolve:
   knowledge_paths: []                # read-only reference material named to the worker
 ```
 
-`repo_path` and `store_path` are resolved against the **config file's** directory, like
-`output.transcript_dir` and `cache.dir`. Debate transcripts land beside the store.
+`repo_path` and `store_path` are resolved against the **config file's** directory: they name
+the input, and `--config examples/evolve_toy/evolve.yaml` run from the repository root must
+not optimise the outer repository. (`output.transcript_dir` and `cache.dir` are outputs and
+resolve against the working directory, as for the other runtimes.) Evolve's own debate
+transcripts land beside the store.
 
 ## Running against a real repository
 
@@ -196,7 +202,7 @@ debates/sec went into git as `v1`.
 ## Watching a run
 
 ```bash
-python -m freemad.cli evolve start --config evolve.yaml "goal" &   # run_id goes to stderr
+freemad evolve start --config evolve.yaml "goal" &   # run_id goes to stderr
 
 freemad-dashboard --evolve-store .freemad/evolve/evolve.db
 # /evolve            every run, newest state

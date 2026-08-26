@@ -32,10 +32,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/jonathansantilli/mad"
-Repository = "https://github.com/jonathansantilli/mad"
-Issues = "https://github.com/jonathansantilli/mad/issues"
-Documentation = "https://github.com/jonathansantilli/mad#readme"
+Homepage = "https://github.com/jonathansantilli/freemad"
+Repository = "https://github.com/jonathansantilli/freemad"
+Issues = "https://github.com/jonathansantilli/freemad/issues"
+Documentation = "https://github.com/jonathansantilli/freemad#readme"
 
 [project.scripts]
 freemad = "freemad.cli:main"

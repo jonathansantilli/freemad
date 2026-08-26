@@ -7,7 +7,7 @@ FREE-MAD ships two runtimes:
 
 Autonomous mode is different from debate mode. Instead of producing a single best answer and stopping, the system owns a task and advances it through explicit stages until the work is approved, blocked, paused, or completed.
 
-This document is the contributor-facing overview of the shipped first milestone. It complements the detailed specification in [`docs/plans/2026-03-31-autonomous-quorum-runtime-spec.md`](plans/2026-03-31-autonomous-quorum-runtime-spec.md).
+This document is the contributor-facing overview of the shipped first milestone, and describes the runtime as it is. A proposed redesign — every decision-producing stage run as a FREE-MAD debate — is in [`autonomous-debate-first-implementation-plan.md`](autonomous-debate-first-implementation-plan.md); it is not implemented.
 
 ## Current Scope
 
@@ -230,5 +230,7 @@ It does not attempt to support arbitrary external business workflows or autonomo
 ## Related Docs
 
 - [`../README.md`](../README.md)
-- [`plans/2026-03-31-autonomous-quorum-runtime-spec.md`](plans/2026-03-31-autonomous-quorum-runtime-spec.md)
-- [`plans/2026-03-31-autonomous-quorum-runtime-implementation-plan.md`](plans/2026-03-31-autonomous-quorum-runtime-implementation-plan.md)
+- [`autonomous-debate-first-implementation-plan.md`](autonomous-debate-first-implementation-plan.md): a proposed
+  redesign in which every decision-producing stage runs the FREE-MAD debate kernel. Not implemented;
+  the runtime described in this document is the proposer/checker one.
+- [`evolve-runtime.md`](evolve-runtime.md): the third runtime, which drives agents toward a measured goal
