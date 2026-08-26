@@ -500,6 +500,7 @@ class TaskOrchestrator:
                 status=TaskStatus.COMPLETED,
                 current_stage=TaskStage.FINALIZE,
                 iteration=task.iteration + 1,
+                error=None,
             )
         )
         self._emit(
@@ -868,7 +869,13 @@ class TaskOrchestrator:
             )
             return updated
         if task.status != TaskStatus.RUNNING:
-            return self._persist(replace(task, status=TaskStatus.RUNNING))
+            return self._persist(replace(task, status=TaskStatus.RUNNING, error=None))
+        if task.error is not None:
+            # A running task carries no error: whatever paused it or asked the human
+            # has been dealt with, or it would not be running again. Resume paths
+            # (CLI and dashboard) set RUNNING before calling run(), so this is where
+            # the stale question is dropped.
+            return self._persist(replace(task, error=None))
         return task
 
     def _emit_stage_started(

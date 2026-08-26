@@ -69,7 +69,14 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
 - The whole repository is formatted with ruff-format and passes `pre-commit run --all-files`;
   build output and vendored assets are excluded from the hooks
 
+### Removed
+- `security.api_key_source` and `security.api_key_name`: parsed into the config and read
+  by nothing — FREE-MAD never handles API keys; the agent CLIs authenticate themselves.
+  Configs that still set them load unchanged; the keys are ignored
+
 ### Fixed
+- A completed or resumed autonomous task no longer reports the question it was waiting on
+  as its `error`; the field is cleared when the task runs again and when it completes
 - README audited against the code: dead design-doc links removed, the evolve runtime
   documented (quick start, CLI, configuration, dashboard, citation), the agent CLI contract
   corrected (the mode argument is opt-in via `cli_mode_arg`; critique replies start with

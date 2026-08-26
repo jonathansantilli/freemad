@@ -98,6 +98,7 @@ class TestAutonomousQuickStart(unittest.TestCase):
             resumed = self._cli(["task", "resume", task_id, *common])
             self.assertEqual(resumed["status"], "completed")
             self.assertEqual(resumed["current_stage"], "finalize")
+            self.assertNotIn("error", resumed, "the answered question must not linger")
 
             inspected = self._cli(["task", "inspect", task_id, *common])
             kinds = [event["kind"] for event in inspected["events"]]

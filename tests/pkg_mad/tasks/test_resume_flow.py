@@ -218,6 +218,7 @@ def test_task_resume_injects_human_input_and_approval_into_feedback(
     waiting = orch.run(task.task_id)
 
     assert waiting.status == TaskStatus.WAITING_FOR_HUMAN
+    assert waiting.error, "the question the task is waiting on is surfaced as its error"
 
     now = orch._now()
     orch.store.append_event(
@@ -244,3 +245,5 @@ def test_task_resume_injects_human_input_and_approval_into_feedback(
 
     assert resumed.status == TaskStatus.COMPLETED
     assert resumed.current_stage == TaskStage.FINALIZE
+    # The answered question must not linger as an "error" on a completed task.
+    assert resumed.error is None
