@@ -4,6 +4,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # init, analyze and upload-sarif must run the same CodeQL Action version;
+      # bumped separately, each PR fails the analyze job until the others land.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
