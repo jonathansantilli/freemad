@@ -72,9 +72,6 @@ deadlines:
   min_agents: 3              # quorum count at soft deadline
 
 security:
-  # API key sourcing (optional, for wrappers)
-  api_key_source: null    # env|file|keyring (adapter-specific)
-  api_key_name: null      # e.g., OPENAI_API_KEY
   # Ensure the executables used in cli_command are allowlisted
   cli_allowed_commands: ["claude", "codex"]
   cli_use_shell: false    # must remain false per spec

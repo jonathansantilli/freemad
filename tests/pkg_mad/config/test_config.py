@@ -218,6 +218,16 @@ task:
             finally:
                 os.chdir(prev_cwd)
 
+    def test_removed_api_key_settings_are_ignored_not_rejected(self):
+        """Nothing ever read them; configs that still set them must keep loading."""
+        cfg = load_config(
+            overrides={
+                "security": {"api_key_source": "env", "api_key_name": "OPENAI_API_KEY"}
+            }
+        )
+        self.assertFalse(hasattr(cfg.security, "api_key_source"))
+        self.assertFalse(hasattr(cfg.security, "api_key_name"))
+
     def test_relative_transcript_dir_is_created_under_the_working_directory(self):
         """Where cli.py writes it — not beside the config file (a phantom dir, until now)."""
         with tempfile.TemporaryDirectory() as cfg_dir, tempfile.TemporaryDirectory() as work:

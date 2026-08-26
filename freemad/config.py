@@ -89,8 +89,6 @@ class ScoringConfig:
 
 @dataclass(frozen=True)
 class SecurityConfig:
-    api_key_source: Optional[str] = None
-    api_key_name: Optional[str] = None
     redact_patterns: List[str] = field(
         # `\b` matters: without it, "task-execute" contains "sk-execute" and gets
         # rewritten to "ta[REDACTED]". That was cosmetic in logs; it is not cosmetic in
@@ -1163,8 +1161,6 @@ def _coerce(cfg_dict: Dict[str, Any]) -> Config:
             random_seed=int(scoring.get("random_seed", 987654321)),
         ),
         security=SecurityConfig(
-            api_key_source=security.get("api_key_source"),
-            api_key_name=security.get("api_key_name"),
             redact_patterns=list(
                 security.get("redact_patterns", SecurityConfig().redact_patterns)
             ),

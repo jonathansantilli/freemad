@@ -49,8 +49,6 @@ scoring:
   random_seed: 987654321           # used when tie_break=random
 
 security:
-  api_key_source: null             # optional; adapter/wrapper specific
-  api_key_name: null               # optional; e.g., OPENAI_API_KEY
   redact_patterns:                 # applied to logs/metrics
     - 'sk-[A-Za-z0-9_-]+'
     - '(?i)api[_-]?key'

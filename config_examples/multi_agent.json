@@ -112,8 +112,6 @@
     "min_agents": 3
   },
   "security": {
-    "api_key_source": null,
-    "api_key_name": null,
     "cli_allowed_commands": ["claude", "codex"],
     "cli_use_shell": false,
     "cli_timeout_ms": 60000,

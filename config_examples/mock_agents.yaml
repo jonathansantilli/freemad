@@ -30,8 +30,6 @@ deadlines:
   min_agents: 2
 
 security:
-  api_key_source: null
-  api_key_name: null
   redact_patterns:
     - "sk-[A-Za-z0-9_-]+"
     - "(?i)api[_-]?key"

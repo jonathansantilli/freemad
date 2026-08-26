@@ -362,7 +362,6 @@ Control debate round timing:
 - `cli_timeout_ms`: Global ceiling on a single CLI call
 - `max_requirement_size`, `max_solution_size`, `max_critique_size`: Input and output size caps (chars)
 - `redact_patterns`: Regex patterns to redact from logs
-- `api_key_source`, `api_key_name`: Accepted for compatibility but unused — FREE-MAD never handles API keys; the agent CLIs authenticate themselves
 
 ### Budget
 - `max_total_time_sec`: Overall wall time budget

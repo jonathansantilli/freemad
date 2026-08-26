@@ -525,9 +525,9 @@ def test_example_agents_are_launchable(cfg_path):
 def test_freemad_never_reads_an_api_key():
     """Auth is the agent CLI's own subscription session, on disk, not an env var.
 
-    Worth pinning: it is why `security.api_key_source`/`api_key_name` are dead config,
-    and why HOME isolation matters more than environment scrubbing for this project's
-    own credentials.
+    Worth pinning: it is why the old `security.api_key_source`/`api_key_name` keys were
+    removed (nothing ever read them), and why HOME isolation matters more than
+    environment scrubbing for this project's own credentials.
     """
     package = PROJECT_ROOT / "freemad"
     offenders = [
