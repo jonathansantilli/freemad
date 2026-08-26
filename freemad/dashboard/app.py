@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import secrets
 import threading
@@ -20,15 +19,19 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import difflib
 import anyio
-import yaml  # type: ignore[import-untyped]
 
 from freemad.config import load_config, ConfigError
 from freemad.dashboard.live_manager import LiveRunManager
 from freemad.dashboard.task_live_manager import TaskLiveManager
 from freemad.dashboard.task_state import apply_task_event, initial_task_snapshot
-from freemad.tasks.orchestrator import TaskOrchestrator
 from freemad.tasks.store import TaskStore
-from freemad.types import RunEventKind, TaskEventKind, TaskStatus, TaskType
+from freemad.types import (
+    EvolveEventKind,
+    RunEventKind,
+    TaskEventKind,
+    TaskStatus,
+    TaskType,
+)
 from freemad.agents import bootstrap as agent_bootstrap
 
 
@@ -37,6 +40,7 @@ class DashboardConfig:
     transcripts_dir: str = "transcripts"
     task_store_path: Path = Path(".freemad/tasks/tasks.db")
     task_artifacts_dir: Path = Path(".freemad/tasks/artifacts")
+    evolve_store_path: Path = Path(".freemad/evolve/evolve.db")
     override_path: Path | None = None
     override_base: Path | None = None
     enable_csrf: bool = False
@@ -86,7 +90,10 @@ def _validate_transcript_filename(file: str, transcripts_root: Path) -> Path:
     if not TRANSCRIPT_FILE_PATTERN.match(file):
         raise HTTPException(status_code=400, detail="invalid transcript filename")
     candidate = (transcripts_root / file).resolve()
-    if transcripts_root.resolve() not in candidate.parents and transcripts_root.resolve() != candidate:
+    if (
+        transcripts_root.resolve() not in candidate.parents
+        and transcripts_root.resolve() != candidate
+    ):
         raise HTTPException(status_code=400, detail="invalid transcript path")
     return candidate
 
@@ -98,8 +105,13 @@ def _validate_config_path(config_path: str | None, allowed_root: Path) -> str | 
     if candidate.is_absolute():
         raise HTTPException(status_code=400, detail="config_path must be relative")
     normalized = (allowed_root / candidate).resolve()
-    if allowed_root.resolve() not in normalized.parents and allowed_root.resolve() != normalized:
-        raise HTTPException(status_code=400, detail="config_path must stay within config directory")
+    if (
+        allowed_root.resolve() not in normalized.parents
+        and allowed_root.resolve() != normalized
+    ):
+        raise HTTPException(
+            status_code=400, detail="config_path must stay within config directory"
+        )
     return str(normalized)
 
 
@@ -129,7 +141,11 @@ def _list_runs(dirpath: Path) -> List[Dict[str, Any]]:
 def _selection_explanation(obj: Dict[str, Any]) -> Dict[str, Any]:
     # Mirrors the tie-break chain: score -> validator_confidence -> lexicographic -> random
     scores: Dict[str, float] = obj.get("scores", {}) or {}
-    conf: Dict[str, float] = obj.get("validator_confidence", {}) or obj.get("validation_confidence", {}) or {}
+    conf: Dict[str, float] = (
+        obj.get("validator_confidence", {})
+        or obj.get("validation_confidence", {})
+        or {}
+    )
     if not scores:
         return {"reason": "no_scores"}
     max_score = max(scores.values())
@@ -141,7 +157,9 @@ def _selection_explanation(obj: Dict[str, Any]) -> Dict[str, Any]:
         return {"chain": reason}
     max_conf = max(conf.get(k, 0.0) for k in top)
     top2 = [k for k in top if conf.get(k, 0.0) == max_conf]
-    reason.append({"step": "max_validator_confidence", "winners": top2, "value": max_conf})
+    reason.append(
+        {"step": "max_validator_confidence", "winners": top2, "value": max_conf}
+    )
     if len(top2) == 1:
         return {"chain": reason}
     # deterministic lexicographic next
@@ -163,7 +181,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
     static_app_dir = base_dir / "static_app"
     if static_app_dir.exists():
-        app.mount("/app", StaticFiles(directory=str(static_app_dir), html=True), name="app")
+        app.mount(
+            "/app", StaticFiles(directory=str(static_app_dir), html=True), name="app"
+        )
     if cfg.enable_cors:
         app.add_middleware(
             CORSMiddleware,
@@ -171,6 +191,7 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
     # Simple security headers middleware
     @app.middleware("http")
     async def _security_headers(request: Request, call_next):  # type: ignore[override]
@@ -213,7 +234,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
                 self._hits[key] = entries
                 return True
 
-    rate_limiter = _RateLimiter(cfg.rate_limit_per_minute) if cfg.enable_rate_limit else None
+    rate_limiter = (
+        _RateLimiter(cfg.rate_limit_per_minute) if cfg.enable_rate_limit else None
+    )
 
     def _require_csrf(request: Request) -> None:
         if not cfg.enable_csrf:
@@ -230,7 +253,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         try:
             text = path.read_text(encoding="utf-8")
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"failed to read override config: {exc}")
+            raise HTTPException(
+                status_code=500, detail=f"failed to read override config: {exc}"
+            )
         return {"path": str(path), "yaml": text}
 
     @app.post("/api/config/override", response_class=JSONResponse)
@@ -250,7 +275,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         except Exception as exc:
             # rollback
             path.write_text(previous, encoding="utf-8")
-            raise HTTPException(status_code=400, detail=f"config validation failed: {exc}")
+            raise HTTPException(
+                status_code=400, detail=f"config validation failed: {exc}"
+            )
         return {"path": str(path), "message": "saved"}
 
     @app.get("/health", response_class=JSONResponse)
@@ -266,7 +293,12 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         page_size = max(1, min(limit or 50, 500))
         start = (page_num - 1) * page_size
         end = start + page_size
-        return {"items": runs[start:end], "page": page_num, "limit": page_size, "total": len(runs)}
+        return {
+            "items": runs[start:end],
+            "page": page_num,
+            "limit": page_size,
+            "total": len(runs),
+        }
 
     @app.get("/api/runs/{file}", response_class=JSONResponse)
     def api_run_detail(file: str) -> Dict[str, Any]:
@@ -302,7 +334,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         if rate_limiter is not None:
             key = request.client.host if request.client else "unknown"
             if not rate_limiter.allow(key):
-                raise HTTPException(status_code=429, detail="too many live run requests")
+                raise HTTPException(
+                    status_code=429, detail="too many live run requests"
+                )
         payload = await request.json()
         requirement = str(payload.get("requirement", "")).strip()
         if not requirement:
@@ -315,14 +349,20 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             raise HTTPException(status_code=400, detail="max_rounds must be an integer")
         overrides = payload.get("overrides")
         if overrides is not None and not isinstance(overrides, dict):
-            raise HTTPException(status_code=400, detail="overrides must be an object if provided")
+            raise HTTPException(
+                status_code=400, detail="overrides must be an object if provided"
+            )
         allowed_config_root = Path.cwd()
         try:
             # If no config/overrides provided, default to mock agents for a smooth dashboard experience.
             default_path = config_path
             if not default_path and not overrides:
                 default_path = "config_examples/mock_agents.yaml"
-            cfg_path = _validate_config_path(default_path, allowed_config_root) if default_path else None
+            cfg_path = (
+                _validate_config_path(default_path, allowed_config_root)
+                if default_path
+                else None
+            )
             cfg_obj = load_config(path=cfg_path, overrides=overrides)
         except ConfigError as e:
             raise HTTPException(status_code=400, detail=f"config error: {e}")
@@ -364,13 +404,21 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             snapshot = apply_task_event(snapshot, event)
         return {
             **task.to_dict(),
-            "artifacts": [artifact.to_dict() for artifact in task_store.list_artifacts(task_id)],
-            "work_items": [item.to_dict() for item in task_store.list_work_items(task_id)],
+            "artifacts": [
+                artifact.to_dict() for artifact in task_store.list_artifacts(task_id)
+            ],
+            "work_items": [
+                item.to_dict() for item in task_store.list_work_items(task_id)
+            ],
             "events": [event.to_dict() for event in events],
             "snapshot": {
                 "task_id": snapshot.task_id,
                 "status": snapshot.status.value,
-                "current_stage": snapshot.current_stage.value if snapshot.current_stage is not None else None,
+                "current_stage": (
+                    snapshot.current_stage.value
+                    if snapshot.current_stage is not None
+                    else None
+                ),
                 "artifact_counts": dict(snapshot.artifact_counts),
                 "completed": snapshot.completed,
                 "error": snapshot.error,
@@ -392,23 +440,31 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
         goal = str(payload.get("goal", "")).strip()
         if not goal:
             raise HTTPException(status_code=400, detail="goal is required")
-        task_type_raw = str(payload.get("task_type", TaskType.PLAN.value)).strip().lower()
+        task_type_raw = (
+            str(payload.get("task_type", TaskType.PLAN.value)).strip().lower()
+        )
         try:
             task_type = TaskType(task_type_raw)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=f"invalid task_type: {task_type_raw}") from exc
+            raise HTTPException(
+                status_code=400, detail=f"invalid task_type: {task_type_raw}"
+            ) from exc
         workspace_root = str(payload.get("workspace_root", ".")).strip() or "."
         config_path = payload.get("config_path")
         overrides = payload.get("overrides")
         if overrides is not None and not isinstance(overrides, dict):
-            raise HTTPException(status_code=400, detail="overrides must be an object if provided")
+            raise HTTPException(
+                status_code=400, detail="overrides must be an object if provided"
+            )
         merged_overrides = dict(overrides or {})
         task_override = dict(merged_overrides.get("task", {}) or {})
         task_override.setdefault("store_path", str(task_store_path))
         task_override.setdefault("artifacts_dir", str(task_artifacts_dir))
         merged_overrides["task"] = task_override
         try:
-            cfg_obj = load_config(path=config_path if config_path else None, overrides=merged_overrides)
+            cfg_obj = load_config(
+                path=config_path if config_path else None, overrides=merged_overrides
+            )
         except ConfigError as exc:
             raise HTTPException(status_code=400, detail=f"config error: {exc}") from exc
         task_id = task_live_manager.start_task(
@@ -434,7 +490,11 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             while True:
                 events = task_store.list_events(task_id)
                 task = task_store.get_task(task_id)
-                if not events and task is None and not task_live_manager.has_task(task_id):
+                if (
+                    not events
+                    and task is None
+                    and not task_live_manager.has_task(task_id)
+                ):
                     await ws.close(code=1008)
                     return
                 while sent < len(events):
@@ -456,7 +516,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
                     await anyio.sleep(0.05)
                     continue
                 terminal_deadline = None
-                if task_live_manager.has_task(task_id) and not task_live_manager.is_completed(task_id):
+                if task_live_manager.has_task(
+                    task_id
+                ) and not task_live_manager.is_completed(task_id):
                     await anyio.sleep(0.05)
                     continue
                 await anyio.sleep(0.05)
@@ -474,7 +536,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             context={"runs": runs},
         )
         if cfg.enable_csrf:
-            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
         return resp
 
     @app.get("/tasks", response_class=HTMLResponse)
@@ -485,7 +549,175 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             context={"tasks": [task.to_dict() for task in task_store.list_tasks()]},
         )
         if cfg.enable_csrf:
-            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
+        return resp
+
+    # ---------- evolve runtime (trajectory view) ----------
+
+    def _evolve_store() -> Any:
+        from freemad.evolve.store import EvolveStore
+
+        if not Path(cfg.evolve_store_path).exists():
+            return None
+        return EvolveStore(Path(cfg.evolve_store_path), read_only=True)
+
+    def _evolve_payload(run_id: str) -> Dict[str, Any]:
+        store = _evolve_store()
+        if store is None:
+            raise HTTPException(status_code=404, detail="run not found")
+        try:
+            snapshot = store.get_run(run_id)
+            if snapshot is None:
+                raise HTTPException(status_code=404, detail="run not found")
+            events = store.list_events(run_id)
+        finally:
+            store.close()
+
+        points: List[Dict[str, Any]] = []
+        interventions: List[Dict[str, Any]] = []
+        escalations: List[Dict[str, Any]] = []
+        baseline_score = None
+        best = snapshot.baseline_score.to_dict() if snapshot.baseline_score else {}
+        for event in events:
+            payload = event.payload or {}
+            if event.kind == EvolveEventKind.BASELINE_JUDGED:
+                verdict = payload.get("verdict") or {}
+                raw = verdict.get("score")
+                if raw:
+                    baseline_score = dict(raw)
+                    best = dict(best or raw)
+            elif event.kind == EvolveEventKind.CANDIDATE_COMMITTED:
+                score = dict(payload.get("score") or {})
+                points.append(
+                    {
+                        "iteration": event.iteration,
+                        "sha": str(payload.get("sha", "")),
+                        "tag": str(payload.get("tag", "")),
+                        "score": score,
+                    }
+                )
+            elif event.kind == EvolveEventKind.SUPERVISOR_TRIGGERED:
+                interventions.append(
+                    {
+                        "iteration": event.iteration,
+                        "cause": str(payload.get("cause", "")),
+                    }
+                )
+            elif event.kind == EvolveEventKind.HUMAN_ESCALATED:
+                escalations.append({"iteration": event.iteration})
+
+        # The judge names its own components, so the chart is built from the data
+        # rather than from a component name hardcoded for one example.
+        names = sorted({name for point in points for name in point["score"]})
+        # A shared x-axis in ITERATION space, not ordinal position: an ordinal axis
+        # cannot line an intervention at iteration N up with the plotted points, and put
+        # the same iteration at opposite ends when a component was missing from some.
+        iterations = [p["iteration"] for p in points] + [
+            i["iteration"] for i in interventions
+        ]
+        low_it = min(iterations) if iterations else 0
+        span_it = max(1, (max(iterations) if iterations else 0) - low_it)
+
+        def _xfrac(iteration: int) -> float:
+            return (iteration - low_it) / span_it
+
+        for marker in interventions:
+            marker["xfrac"] = _xfrac(marker["iteration"])
+        for marker in escalations:
+            marker["xfrac"] = _xfrac(marker["iteration"])
+
+        series: List[Dict[str, Any]] = []
+        for name in names:
+            observed = [float(p["score"][name]) for p in points if name in p["score"]]
+            if not observed:
+                continue
+            low, high = min(observed), max(observed)
+            if snapshot.baseline_score is not None:
+                base = snapshot.baseline_score.get(name)
+                if base is not None:
+                    low, high = min(low, float(base)), max(high, float(base))
+            span = high - low
+            series.append(
+                {
+                    "name": name,
+                    "low": low,
+                    "high": high,
+                    # Normalised against the component's own observed range, so a
+                    # component that is minimised or negative still plots sensibly.
+                    # Named "points", not "values": Jinja would resolve `s.values` to
+                    # the dict method instead of this key.
+                    "points": [
+                        {
+                            "iteration": p["iteration"],
+                            "value": float(p["score"][name]),
+                            "frac": (
+                                (float(p["score"][name]) - low) / span
+                                if span > 0
+                                else 0.5
+                            ),
+                            "xfrac": _xfrac(p["iteration"]),
+                        }
+                        for p in points
+                        if name in p["score"]
+                    ],
+                }
+            )
+        return {
+            **snapshot.to_dict(),
+            "baseline_score": baseline_score,
+            "points": points,
+            "series": series,
+            "interventions": interventions,
+            "escalations": escalations,
+        }
+
+    @app.get("/api/evolve", response_class=JSONResponse)
+    def api_evolve_runs() -> List[Dict[str, Any]]:
+        store = _evolve_store()
+        if store is None:
+            return []
+        try:
+            runs = [run.to_dict() for run in store.list_runs()]
+        finally:
+            store.close()
+        return runs
+
+    @app.get("/api/evolve/{run_id}", response_class=JSONResponse)
+    def api_evolve_detail(run_id: str) -> Dict[str, Any]:
+        return _evolve_payload(run_id)
+
+    @app.get("/evolve", response_class=HTMLResponse)
+    def evolve_index(request: Request) -> HTMLResponse:
+        store = _evolve_store()
+        runs: List[Dict[str, Any]] = []
+        if store is not None:
+            try:
+                runs = [run.to_dict() for run in store.list_runs()]
+            finally:
+                store.close()
+        resp = templates.TemplateResponse(
+            request=request, name="evolve_runs.html", context={"runs": runs}
+        )
+        if cfg.enable_csrf:
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
+        return resp
+
+    @app.get("/evolve/{run_id}", response_class=HTMLResponse)
+    def evolve_trajectory(request: Request, run_id: str) -> HTMLResponse:
+        payload = _evolve_payload(run_id)
+        resp = templates.TemplateResponse(
+            request=request,
+            name="evolve.html",
+            context={"run": payload},
+        )
+        if cfg.enable_csrf:
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
         return resp
 
     @app.get("/tasks/{task_id}", response_class=HTMLResponse)
@@ -497,7 +729,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             context={"task": payload},
         )
         if cfg.enable_csrf:
-            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
         return resp
 
     @app.get("/runs/{file}", response_class=HTMLResponse)
@@ -529,7 +763,11 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
                 diff = ""
                 if changed and prev and sol and prev != sol:
                     diff_lines = difflib.unified_diff(
-                        prev.splitlines(), sol.splitlines(), fromfile="prev", tofile="new", lineterm=""
+                        prev.splitlines(),
+                        sol.splitlines(),
+                        fromfile="prev",
+                        tofile="new",
+                        lineterm="",
                     )
                     # limit diff length for safety
                     diff = "\n".join(list(diff_lines)[:200])
@@ -560,7 +798,14 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
                 if e is not None:
                     events.append({"agent_id": aid, **e})
             changed_count = sum(1 for e in events if e.get("changed"))
-            round_groups.append({"round": r_idx, "type": r_type, "events": events, "changed_count": changed_count})
+            round_groups.append(
+                {
+                    "round": r_idx,
+                    "type": r_type,
+                    "events": events,
+                    "changed_count": changed_count,
+                }
+            )
         obj["round_groups"] = round_groups
         # score history for winner
         fid = obj.get("final_answer_id")
@@ -572,7 +817,9 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
             context={"run": obj},
         )
         if cfg.enable_csrf:
-            resp.set_cookie("csrftoken", app.state.csrf_token, httponly=False, samesite="lax")
+            resp.set_cookie(
+                "csrftoken", app.state.csrf_token, httponly=False, samesite="lax"
+            )
         return resp
 
     return app
@@ -581,11 +828,18 @@ def create_app(cfg: DashboardConfig) -> FastAPI:
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="FREE-MAD Dashboard")
     ap.add_argument("--dir", default="transcripts", help="Transcripts directory")
+    ap.add_argument(
+        "--evolve-store",
+        default=str(DashboardConfig.evolve_store_path),
+        help="Path to the evolve SQLite store",
+    )
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", default=8000, type=int)
     args = ap.parse_args(argv)
 
-    cfg = DashboardConfig(transcripts_dir=args.dir)
+    cfg = DashboardConfig(
+        transcripts_dir=args.dir, evolve_store_path=Path(args.evolve_store)
+    )
     app = create_app(cfg)
 
     # Run uvicorn programmatically

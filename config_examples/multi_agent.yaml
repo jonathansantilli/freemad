@@ -26,33 +26,33 @@ agents:
     config: # defaults shown
       temperature: 0.7
       max_tokens: null       # unlimited
-  - id: gpt-5-high
+  - id: codex-high
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: { --model: "gpt-5.1", --enable: "web_search_request", --config: "model_reasoning_effort='high'" }
+    cli_args: { --model: "gpt-5.3-codex", --enable: "web_search_request", --config: "model_reasoning_effort='high'" }
     cli_flags: ["--skip-git-repo-check"]
     cli_positional: ["-"]
     timeout: 600
     config:
       temperature: 0.7
       max_tokens: null
-  - id: gpt-5-codex
+  - id: codex-medium
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: { --model: "gpt-5.1-codex", --enable: "web_search_request", --config: "model_reasoning_effort='high'" }
+    cli_args: { --model: "gpt-5.3-codex", --enable: "web_search_request", --config: "model_reasoning_effort='medium'" }
     cli_flags: ["--skip-git-repo-check"]
     cli_positional: ["-"]
     timeout: 600
     config:
       temperature: 0.7
       max_tokens: null
-  - id: gpt-5-codex-mini
+  - id: codex-low
     type: openai_codex
     enabled: true
     cli_command: "codex exec"
-    cli_args: { --model: "gpt-5.1-codex-mini", --enable: "web_search_request", --config: "model_reasoning_effort='high'" }
+    cli_args: { --model: "gpt-5.3-codex", --enable: "web_search_request", --config: "model_reasoning_effort='low'" }
     cli_flags: [ "--skip-git-repo-check" ]
     cli_positional: [ "-" ]
     timeout: 600

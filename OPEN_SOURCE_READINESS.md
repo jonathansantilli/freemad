@@ -25,6 +25,11 @@ This checklist summarizes the non‑functional items that keep the repo healthy 
 - [x] CHANGELOG, CONTRIBUTING, GOVERNANCE, SUPPORT
 - [x] Examples configs for direct and MCP agents
 - [x] Dashboard usage documented
+- [x] Evolve runtime: docs page (`docs/evolve-runtime.md`), toy example with
+  comparison harness, dependency-update example, dashboard trajectory view
+- [x] `CITATION.cff` version matches `pyproject.toml` and cites both source papers
+- [x] Pre-commit audit of the evolve runtime, its fixes, and an adversarial review of
+  those fixes (`docs/evolve-audit.md`); open items recorded there rather than implied
 - [ ] Screenshots/GIFs in README (optional)
 
 ## Security Hardening

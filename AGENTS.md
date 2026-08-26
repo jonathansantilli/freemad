@@ -6,3 +6,23 @@ Coding Conventions for FREE-MAD (Single Source of Truth)
 - Type checking: a `mypy.ini` is provided with strict-ish settings; prefer adding `from __future__ import annotations` and annotating all public functions. CI can run `mypy` when available.
 - Determinism: any randomness must be seeded from the config to ensure deterministic tests.
 - No shell=True and maintain CLI allowlist from config. Enforce budgets and size caps; include truncation markers where applied.
+
+## Skills (single source of truth)
+
+Detailed, task-specific guidance lives in **`.claude/skills/<name>/SKILL.md`** — five
+skills: `freemad-architecture`, `freemad-python-patterns`, `freemad-security`,
+`freemad-testing`, `freemad-ui-patterns`. That directory is the only canonical copy.
+
+- **Claude Code** reads `.claude/skills/` natively.
+- **Other agents** (Codex and any tool that indexes `.agents/skills/`): the same names
+  exist under `.agents/skills/`, but each file there is a *pointer* whose body says
+  "read `.claude/skills/<name>/SKILL.md`". Follow it. Do not edit the pointer.
+- Any agent without either convention: read the five `.claude/skills/*/SKILL.md` files
+  directly before working on the corresponding area.
+
+Both directories are gitignored. Never create a third copy; update `.claude/skills/` and
+the pointers stay valid by construction.
+
+Design references: `evolve.md` (the evolve runtime handoff plan — decisions, not
+suggestions), `docs/evolve-runtime.md` (user-facing), `docs/evolve-audit.md` (what was
+found and fixed, and why).

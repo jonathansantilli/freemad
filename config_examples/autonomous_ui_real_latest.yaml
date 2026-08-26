@@ -1,0 +1,54 @@
+agents:
+  - id: claude_research
+    type: claude_code
+    cli_command: "python3 bin/claude_print_wrapper.py --model opus"
+    timeout: 180
+    roles: ["researcher", "reviewer", "arbiter"]
+
+  - id: codex_research
+    type: openai_codex
+    cli_command: "python3 bin/codex_exec_wrapper.py --model gpt-5.3-codex"
+    timeout: 180
+    roles: ["researcher", "reviewer", "arbiter"]
+
+  - id: codex_planner
+    type: openai_codex
+    cli_command: "python3 bin/codex_exec_wrapper.py --model gpt-5.3-codex"
+    timeout: 180
+    roles: ["planner", "implementer"]
+
+  - id: claude_verifier
+    type: claude_code
+    cli_command: "python3 bin/claude_print_wrapper.py --model opus"
+    timeout: 180
+    roles: ["verifier", "reviewer", "arbiter"]
+
+security:
+  cli_allowed_commands:
+    - "python3"
+    - "claude"
+    - "codex"
+    - "poetry"
+    - "pytest"
+    - "mypy"
+    - "git"
+
+task:
+  store_path: ".freemad/ui-real/tasks.db"
+  artifacts_dir: ".freemad/ui-real/artifacts"
+  max_stage_retries: 2
+  max_total_iterations: 12
+  tool_policy:
+    allow_web_research: true
+    allow_workspace_write: true
+    allow_local_commands: true
+    allowed_write_roots:
+      - "."
+    allowed_local_commands:
+      - "python3"
+      - "poetry"
+      - "pytest"
+      - "mypy"
+      - "git"
+    verification_commands:
+      - "poetry run pytest -q tests/pkg_mad/tasks/test_models.py tests/pkg_mad/tasks/test_store.py"

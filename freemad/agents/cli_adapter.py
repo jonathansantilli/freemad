@@ -8,7 +8,11 @@ from typing import Any, List, Optional, Tuple
 import json
 
 from freemad.config import AgentConfig, Config, ConfigError
-from freemad.prompts import build_critique_prompt, build_generation_prompt, build_task_prompt
+from freemad.prompts import (
+    build_critique_prompt,
+    build_generation_prompt,
+    build_task_prompt,
+)
 from freemad.tasks.models import TaskRequest, TaskResponse
 from freemad.types import Decision, LogEvent
 from freemad.utils import parse_generation, parse_critique, compute_answer_id
@@ -36,7 +40,11 @@ class CLIAdapter(Agent):
             self.logger = get_logger(cfg)
         except Exception:  # pragma: no cover
             pass
-        self._cache = DiskCache(cfg.cache.dir, cfg.cache.max_entries) if cfg.cache.enabled else None
+        self._cache = (
+            DiskCache(cfg.cache.dir, cfg.cache.max_entries)
+            if cfg.cache.enabled
+            else None
+        )
 
     def _ensure_allowed(self, exe: str) -> None:
         if exe not in (self.cfg.security.cli_allowed_commands or []):
@@ -54,11 +62,20 @@ class CLIAdapter(Agent):
         # 1) single flags (order preserved)
         if self.agent_cfg.cli_flags:
             cmd.extend(list(self.agent_cfg.cli_flags))
+        # 1b) mode-specific flags: exact mode first, then its family ("task" covers
+        #     every "task-<stage>" mode act() produces)
+        mode_flags = self.agent_cfg.cli_mode_flags
+        if mode_flags:
+            family = mode.split("-", 1)[0]
+            for mode_key in (mode, family):
+                if mode_key in mode_flags:
+                    cmd.extend(list(mode_flags[mode_key]))
+                    break
         # 2) key=value style flags (sorted for determinism)
         # Append deterministic key-value args as CLI flags
         if self.agent_cfg.cli_args:
             for k in sorted(self.agent_cfg.cli_args.keys()):
-                flag = k if k.startswith('-') else f"--{k}"
+                flag = k if k.startswith("-") else f"--{k}"
                 cmd.extend([flag, str(self.agent_cfg.cli_args[k])])
         # 3) positional args (order preserved), e.g., ['-']
         if self.agent_cfg.cli_positional:
@@ -77,8 +94,17 @@ class CLIAdapter(Agent):
                 "args": sorted((self.agent_cfg.cli_args or {}).items()),
                 "pos": list(self.agent_cfg.cli_positional or []),
             }
-            cache_prompt = f"ARGS={json.dumps(cache_meta, sort_keys=True)}\n{input_text}"
-            key = self._cache.make_key(mode, self.agent_cfg.id, cache_prompt, self.__class__.__name__, self.agent_cfg.config.temperature, self.agent_cfg.config.max_tokens)
+            cache_prompt = (
+                f"ARGS={json.dumps(cache_meta, sort_keys=True)}\n{input_text}"
+            )
+            key = self._cache.make_key(
+                mode,
+                self.agent_cfg.id,
+                cache_prompt,
+                self.__class__.__name__,
+                self.agent_cfg.config.temperature,
+                self.agent_cfg.config.max_tokens,
+            )
             hit = self._cache.get(key)
             if hit is not None:
                 return hit, 0.0, True
@@ -99,7 +125,7 @@ class CLIAdapter(Agent):
             text=True,
             capture_output=True,
             timeout=timeout_s,
-            check=False
+            check=False,
         )
         elapsed_ms = (time.perf_counter() - t0) * 1000
         stdout = (proc.stdout or "").strip()
@@ -141,13 +167,21 @@ class CLIAdapter(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         prompt = build_generation_prompt(requirement)
         # token budget enforcement for prompt
-        if self.cfg.budget.enable_token_truncation and self.cfg.budget.max_tokens_per_agent_per_round is not None:
-            prompt, _ = truncate_to_tokens(prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="prompt")
+        if (
+            self.cfg.budget.enable_token_truncation
+            and self.cfg.budget.max_tokens_per_agent_per_round is not None
+        ):
+            prompt, _ = truncate_to_tokens(
+                prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="prompt"
+            )
         raw, elapsed_ms, cached = self._run_cli(prompt, mode="generating")
         parsed = parse_generation(raw)
         if parsed.needs_retry:
             # retry with clarification
-            retry_prompt = prompt + "\n\nPlease output exactly the SOLUTION and REASONING sections."
+            retry_prompt = (
+                prompt
+                + "\n\nPlease output exactly the SOLUTION and REASONING sections."
+            )
             raw, elapsed_ms2, _ = self._run_cli(retry_prompt, mode="generating")
             parsed2 = parse_generation(raw)
             if not parsed2.needs_retry:
@@ -155,9 +189,16 @@ class CLIAdapter(Agent):
                 elapsed_ms += elapsed_ms2
         # Default empty if still invalid
         solution = parsed.solution
-        solution, truncated = enforce_size(solution, self.cfg.security.max_solution_size, label="solution")
+        solution, truncated = enforce_size(
+            solution, self.cfg.security.max_solution_size, label="solution"
+        )
         if truncated and self.logger:
-            log_event(self.logger, LogEvent.TRUNCATE, label="solution", agent=self.agent_cfg.id)
+            log_event(
+                self.logger,
+                LogEvent.TRUNCATE,
+                label="solution",
+                agent=self.agent_cfg.id,
+            )
         ans_id = compute_answer_id(solution)
         tokens_out = approx_tokens(solution + "\n\n" + parsed.reasoning)
         tokens_in = approx_tokens(prompt)
@@ -166,17 +207,30 @@ class CLIAdapter(Agent):
             solution=solution,
             reasoning=parsed.reasoning,
             answer_id=ans_id,
-            metadata=Metadata(timings={"elapsed_ms": elapsed_ms, "cached": 1.0 if cached else 0.0}, tokens={"prompt": tokens_in, "output": tokens_out}),
+            metadata=Metadata(
+                timings={"elapsed_ms": elapsed_ms, "cached": 1.0 if cached else 0.0},
+                tokens={"prompt": tokens_in, "output": tokens_out},
+            ),
         )
 
-    def critique_and_refine(self, requirement: str, own_response: str, peer_responses: List[str]) -> CritiqueResponse:
+    def critique_and_refine(
+        self, requirement: str, own_response: str, peer_responses: List[str]
+    ) -> CritiqueResponse:
         prompt = build_critique_prompt(requirement, own_response, peer_responses)
-        if self.cfg.budget.enable_token_truncation and self.cfg.budget.max_tokens_per_agent_per_round is not None:
-            prompt, _ = truncate_to_tokens(prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="prompt")
+        if (
+            self.cfg.budget.enable_token_truncation
+            and self.cfg.budget.max_tokens_per_agent_per_round is not None
+        ):
+            prompt, _ = truncate_to_tokens(
+                prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="prompt"
+            )
         raw, elapsed_ms, cached = self._run_cli(prompt, mode="critique")
         parsed = parse_critique(raw)
         if parsed.needs_retry:
-            retry_prompt = prompt + "\n\nPlease output exactly DECISION and REASONING, and if revising, also REVISED_SOLUTION."
+            retry_prompt = (
+                prompt
+                + "\n\nPlease output exactly DECISION and REASONING, and if revising, also REVISED_SOLUTION."
+            )
             raw, elapsed_ms2, _ = self._run_cli(retry_prompt, mode="critique")
             parsed2 = parse_critique(raw)
             if not parsed2.needs_retry:
@@ -185,12 +239,23 @@ class CLIAdapter(Agent):
         # If still invalid: default KEEP without changes
         decision = parsed.decision if not parsed.needs_retry else Decision.KEEP
         changed = decision == Decision.REVISE and bool(parsed.solution)
-        new_solution = parsed.solution if (changed and parsed.solution) else own_response
-        new_solution, truncated = enforce_size(new_solution, self.cfg.security.max_solution_size, label="solution")
+        new_solution = (
+            parsed.solution if (changed and parsed.solution) else own_response
+        )
+        new_solution, truncated = enforce_size(
+            new_solution, self.cfg.security.max_solution_size, label="solution"
+        )
         if truncated and self.logger:
-            log_event(self.logger, LogEvent.TRUNCATE, label="solution", agent=self.agent_cfg.id)
+            log_event(
+                self.logger,
+                LogEvent.TRUNCATE,
+                label="solution",
+                agent=self.agent_cfg.id,
+            )
         ans_id = compute_answer_id(new_solution)
-        tokens_out = approx_tokens((parsed.solution or own_response) + "\n\n" + parsed.reasoning)
+        tokens_out = approx_tokens(
+            (parsed.solution or own_response) + "\n\n" + parsed.reasoning
+        )
         tokens_in = approx_tokens(prompt)
         return CritiqueResponse(
             agent_id=self.agent_cfg.id,
@@ -199,14 +264,26 @@ class CLIAdapter(Agent):
             solution=new_solution,
             reasoning=parsed.reasoning,
             answer_id=ans_id,
-            metadata=Metadata(timings={"elapsed_ms": elapsed_ms, "cached": 1.0 if cached else 0.0}, tokens={"prompt": tokens_in, "output": tokens_out}),
+            metadata=Metadata(
+                timings={"elapsed_ms": elapsed_ms, "cached": 1.0 if cached else 0.0},
+                tokens={"prompt": tokens_in, "output": tokens_out},
+            ),
         )
 
     def act(self, request: TaskRequest) -> TaskResponse:
         prompt = build_task_prompt(request)
-        if self.cfg.budget.enable_token_truncation and self.cfg.budget.max_tokens_per_agent_per_round is not None:
-            prompt, _ = truncate_to_tokens(prompt, self.cfg.budget.max_tokens_per_agent_per_round, label="task_prompt")
-        raw, _elapsed_ms, _cached = self._run_cli(prompt, mode=f"task-{request.stage.value}")
+        if (
+            self.cfg.budget.enable_token_truncation
+            and self.cfg.budget.max_tokens_per_agent_per_round is not None
+        ):
+            prompt, _ = truncate_to_tokens(
+                prompt,
+                self.cfg.budget.max_tokens_per_agent_per_round,
+                label="task_prompt",
+            )
+        raw, _elapsed_ms, _cached = self._run_cli(
+            prompt, mode=f"task-{request.stage.value}"
+        )
         return self._parse_task_response(raw, request=request)
 
     def _parse_task_response(self, raw: str, *, request: TaskRequest) -> TaskResponse:

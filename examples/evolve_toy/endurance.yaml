@@ -1,0 +1,68 @@
+# Endurance run config (M2 manual sign-off).
+#
+# Goal is deliberately unreachable (ops_per_sec >= 1e9 vs ~2.9k baseline, and the
+# closed form only reaches ~9M) so the run terminates on max_wall_clock_minutes (8h),
+# exercising budgets, worktree churn, store growth, and supervision over a real day
+# cycle with real agents.
+#
+# repo_path and store_path resolve against this file's directory, so it can be run
+# from anywhere:
+#   poetry run python -m freemad.cli evolve validate --config examples/evolve_toy/endurance.yaml
+
+agents:
+  # `python ../../bin/claude_print_wrapper.py` was wrong twice: `python` is not in
+  # `security.cli_allowed_commands` (the adapter refuses it), and the relative path
+  # does not exist once the example is copied out, as its own README instructs.
+  # Calling `claude` directly avoids both, and authenticates the same way: the CLI's
+  # own subscription session, no API key.
+  - id: worker
+    type: claude_code
+    cli_command: "claude -p --model opus --dangerously-skip-permissions"
+    timeout: 600
+  - id: peer
+    type: openai_codex
+    enabled: false            # second agent only needed for debates; single-agent variation ignores it
+
+task:
+  tool_policy:
+    allow_workspace_write: true
+    allow_local_commands: true
+    allowed_local_commands: [python, python3, pytest]
+
+evolve:
+  repo_path: .
+  seed_ref: HEAD
+  variation:
+    kind: single_agent
+    agent_id: worker
+  judge:
+    stages:
+      - name: tests
+        command: python3 -m pytest tests -q
+        timeout_sec: 120
+        parse: exit_code
+      - name: bench
+        command: python3 bench.py
+        timeout_sec: 120
+        parse: json_stdout
+        provides: [ops_per_sec]
+    gate:
+      - {component: ops_per_sec, op: ">", value: 0}
+    comparator:
+      - {component: ops_per_sec, direction: maximize, epsilon: 400.0}  # ~4 sigma of measured noise
+    protected_paths:
+      - bench.py
+      - tests/
+  supervisor:
+    stall_window: 4
+    loop_threshold: 3
+    directions_ttl_iterations: 3
+    max_interventions_before_human: 6   # high enough to not park at 3am
+  stop:
+    max_iterations: 300
+    max_wall_clock_minutes: 480         # the terminator for this run
+    target:
+      - {component: ops_per_sec, op: ">=", value: 1000000000}   # unreachable on purpose
+  context_budget_chars: 8000
+  worker_budget:
+    max_minutes: 10

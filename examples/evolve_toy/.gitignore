@@ -1,0 +1,6 @@
+# The judge runs interpreters inside every worktree; without this, `git add -A`
+# commits their bytecode into the lineage on the very first accepted candidate.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.freemad/

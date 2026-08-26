@@ -1,0 +1,68 @@
+# Dependency-update example configuration.
+agents:
+  # Auth is the CLI's own logged-in session (a Claude subscription) — freemad never
+  # reads an API key. `claude` is already in `security.cli_allowed_commands`, so no
+  # allowlist widening is needed, and there is no relative wrapper path to resolve.
+  #
+  # `timeout` is not optional in practice. The adapter uses
+  # max(agent.timeout, security.cli_timeout_ms, budget.max_agent_time_sec), and all
+  # three default to 60s or less — which a real model doing a code edit blows through
+  # every time. Without this the run does its whole iteration budget of timeouts and
+  # stops cleanly, having changed nothing.
+  - id: worker
+    type: claude_code
+    cli_command: "claude -p --model opus --dangerously-skip-permissions"
+    timeout: 600
+    enabled: true
+  - id: peer
+    type: claude_code
+    cli_command: "claude -p --model opus --dangerously-skip-permissions"
+    timeout: 600
+    enabled: true
+
+task:
+  tool_policy:
+    allow_workspace_write: true
+    allow_local_commands: true
+    allowed_local_commands: [python, python3, pytest]
+
+evolve:
+  repo_path: .
+  seed_ref: HEAD
+  variation:
+    kind: single_agent
+    agent_id: worker
+  judge:
+    stages:
+      - name: characterization
+        command: python3 characterization.py
+        timeout_sec: 60
+        parse: exit_code
+      - name: unit_tests
+        command: python3 -m pytest tests -q
+        timeout_sec: 120
+        parse: exit_code
+      - name: bench
+        command: python3 bench_stub.py
+        timeout_sec: 60
+        parse: json_stdout
+        provides: [compat_score]
+    # The gate is the admissibility floor, not the goal. The seed scores 50 (all five
+    # golden behaviors hold, but vendored_lib is still 1.x), and `evolve.md` section 2.2
+    # requires the seed to pass its own gate -- a gate of 100 would stop the run
+    # FATAL_ERROR before iteration 1. So: never regress behaviour below the seed, and
+    # let `stop.target` carry the actual goal.
+    gate:
+      - {component: compat_score, op: ">=", value: 50}
+    comparator:
+      - {component: compat_score, direction: maximize, epsilon: 1.0}
+    protected_paths:
+      - characterization.py
+      - bench_stub.py
+  stop:
+    max_iterations: 12
+    max_wall_clock_minutes: 60
+    target:
+      - {component: compat_score, op: ">=", value: 100}
+  worker_budget:
+    max_minutes: 10

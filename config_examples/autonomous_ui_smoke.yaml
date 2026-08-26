@@ -1,0 +1,34 @@
+agents:
+  - id: smoke_researcher
+    type: claude_code
+    cli_command: "python3 bin/structured_human_task_mock.py"
+    roles: ["researcher"]
+
+  - id: smoke_planner
+    type: openai_codex
+    cli_command: "python3 bin/structured_human_task_mock.py"
+    roles: ["planner"]
+
+  - id: smoke_reviewer
+    type: claude_code
+    cli_command: "python3 bin/structured_human_task_mock.py"
+    roles: ["reviewer", "arbiter", "verifier"]
+
+security:
+  cli_allowed_commands:
+    - "python3"
+
+task:
+  store_path: ".freemad/ui-smoke/tasks.db"
+  artifacts_dir: ".freemad/ui-smoke/artifacts"
+  max_stage_retries: 2
+  max_total_iterations: 12
+  tool_policy:
+    allow_web_research: false
+    allow_workspace_write: false
+    allow_local_commands: false
+    allowed_write_roots:
+      - "."
+    allowed_local_commands:
+      - "python3"
+    verification_commands: []

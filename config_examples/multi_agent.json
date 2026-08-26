@@ -46,12 +46,12 @@
       }
     },
     {
-      "id": "gpt-5-high",
+      "id": "codex-high",
       "type": "openai_codex",
       "enabled": true,
       "cli_command": "codex exec",
       "cli_args": {
-        "--model": "gpt-5.1",
+        "--model": "gpt-5.3-codex",
         "--enable": "web_search_request",
         "--cd": "/PATH/TO/DIR"
       },
@@ -64,12 +64,12 @@
       }
     },
     {
-      "id": "gpt-5-codex",
+      "id": "codex-medium",
       "type": "openai_codex",
       "enabled": true,
       "cli_command": "codex exec",
       "cli_args": {
-        "--model": "gpt-5.1-codex",
+        "--model": "gpt-5.3-codex",
         "--enable": "web_search_request",
         "--cd": "/PATH/TO/DIR"
       },
@@ -82,12 +82,12 @@
       }
     },
     {
-      "id": "gpt-5-codex-mini",
+      "id": "codex-low",
       "type": "openai_codex",
       "enabled": true,
       "cli_command": "codex exec",
       "cli_args": {
-        "--model": "gpt-5.1-codex-mini",
+        "--model": "gpt-5.3-codex",
         "--enable": "web_search_request",
         "--cd": "/PATH/TO/DIR"
       },

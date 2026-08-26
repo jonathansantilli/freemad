@@ -39,6 +39,25 @@ The autonomous runtime is intentionally a first milestone. It supports persisted
 
 Free-MAD is a revolutionary approach to multi-agent AI systems that **eliminates the need for consensus** among agents while achieving better accuracy and efficiency than traditional debate methods.
 
+### Three Runtimes
+
+Free-MAD ships three sibling runtimes over the same agent/security/config infrastructure:
+
+| Runtime | Question it answers | Entry point |
+|---|---|---|
+| **Debate** | Which proposal is *best among candidates*? | `freemad.cli` (default) |
+| **Autonomous tasks** | How do agents collaborate through a staged workflow? | `python -m freemad.cli task start "goal"` |
+| **Evolve** | How does measured progress toward an *external goal* accumulate over generations? | `python -m freemad.cli evolve start --config cfg.yaml "goal"` |
+
+The evolve runtime keeps a strict division of responsibility: **debate judges quality
+among proposals; a deterministic judge judges fitness against the goal. These are
+never merged** — debate output can choose what to attempt, but only the deterministic
+judge (gates + score comparator) admits a candidate into the lineage. If quorum
+approval could ever gate a commit, the design is broken.
+
+See [docs/evolve-runtime.md](docs/evolve-runtime.md) for the full design, the CLI,
+the self-regulation contract, and the security posture.
+
 ### The Problem with Traditional Multi-Agent Debates
 
 When you have multiple AI agents working on the same problem, traditional approaches (MAD - Multi-Agent Debate) work like this:
@@ -172,10 +191,10 @@ agents:
     cli_args: {model: "sonnet"}
     timeout: 600
 
-  - id: gpt-5
+  - id: codex
     type: openai_codex
     cli_command: "codex exec"
-    cli_args: {--model: "gpt-5.1"}
+    cli_args: {--model: "gpt-5.3-codex"}
     cli_flags: ["--skip-git-repo-check"]
     cli_positional: ["-"]
     timeout: 600

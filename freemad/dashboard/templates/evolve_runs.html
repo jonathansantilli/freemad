@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-lg font-semibold">Evolve Runs</h2>
+  <div class="text-sm text-slate-500">Showing {{ runs|length }} run(s)</div>
+</div>
+
+{% if runs %}
+  <div class="overflow-x-auto bg-white shadow rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100">
+        <tr>
+          <th scope="col" class="text-left px-4 py-2">Run ID</th>
+          <th scope="col" class="text-left px-4 py-2">Status</th>
+          <th scope="col" class="text-left px-4 py-2">Best</th>
+          <th scope="col" class="text-left px-4 py-2">Goal</th>
+          <th scope="col" class="text-left px-4 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for run in runs %}
+        <tr class="border-t border-slate-100 hover:bg-slate-50">
+          <td class="px-4 py-2 font-mono">{{ run.run_id }}</td>
+          <td class="px-4 py-2">{{ run.status }}</td>
+          <td class="px-4 py-2">{{ 'it' ~ run.best_iteration if run.best_iteration is not none else 'baseline' }}</td>
+          <td class="px-4 py-2">{{ run.goal }}</td>
+          <td class="px-4 py-2"><a class="text-blue-600 hover:underline" href="/evolve/{{ run.run_id }}">View</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="bg-white shadow rounded-lg p-6 text-center text-slate-700">
+    <div class="text-lg font-semibold mb-2">No evolve runs yet</div>
+    <p class="text-sm text-slate-500">Start one with <code class="font-mono">freemad evolve start --config cfg.yaml "goal"</code>, then reload.</p>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="mb-6">
+  <div class="text-sm text-slate-500 font-mono">{{ run.run_id }}</div>
+  <h2 class="text-xl font-semibold">{{ run.goal }}</h2>
+</div>
+
+<div class="grid md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Status</div>
+    <div class="text-lg font-semibold">{{ run.status }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Stop reason</div>
+    <div class="text-lg font-semibold">{{ run.stop_reason or '-' }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Best iteration</div>
+    <div class="text-lg font-semibold">{{ run.best_iteration if run.best_iteration is not none else 'baseline' }}</div>
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="text-xs uppercase text-slate-500">Interventions / escalations</div>
+    <div class="text-lg font-semibold">{{ run.interventions|length }} / {{ run.escalations|length }}</div>
+  </div>
+</div>
+
+<div class="bg-white shadow rounded-lg p-4 mb-6">
+  <h3 class="font-semibold mb-3">Score at each accepted version</h3>
+  {% if run.series %}
+    {% for s in run.series %}
+      {% set n = s.points|length %}
+      <div class="mb-5">
+        <div class="flex items-baseline justify-between mb-1">
+          <span class="font-mono text-sm">{{ s.name }}</span>
+          <span class="text-xs text-slate-500">{{ '%.6g'|format(s.low) }} &rarr; {{ '%.6g'|format(s.high) }}</span>
+        </div>
+        <svg viewBox="0 0 600 160" class="w-full h-40" role="img"
+             aria-label="{{ s.name }} across {{ n }} accepted iteration(s)">
+          <line x1="0" y1="150" x2="600" y2="150" stroke="#e2e8f0" />
+          {% for m in run.interventions %}
+            <line x1="{{ (50 + 500 * m.xfrac)|round|int }}" y1="10"
+                  x2="{{ (50 + 500 * m.xfrac)|round|int }}" y2="150"
+                  stroke="#f59e0b" stroke-width="1" stroke-dasharray="3 3">
+              <title>it{{ m.iteration }}: supervisor intervention ({{ m.cause }})</title>
+            </line>
+          {% endfor %}
+          {% for m in run.escalations %}
+            <line x1="{{ (50 + 500 * m.xfrac)|round|int }}" y1="10"
+                  x2="{{ (50 + 500 * m.xfrac)|round|int }}" y2="150"
+                  stroke="#dc2626" stroke-width="2">
+              <title>it{{ m.iteration }}: escalated to human</title>
+            </line>
+          {% endfor %}
+          <polyline fill="none" stroke="#93c5fd" stroke-width="2" points="
+            {%- for v in s.points -%}
+              {{ (50 + 500 * v.xfrac)|round|int }},{{ (150 - 130 * v.frac)|round|int }}{{ ' ' }}
+            {%- endfor -%}" />
+          {% for v in s.points %}
+            {% set x = (50 + 500 * v.xfrac)|round|int %}
+            {% set y = (150 - 130 * v.frac)|round|int %}
+            <circle cx="{{ x }}" cy="{{ y }}" r="5" fill="#2563eb">
+              <title>it{{ v.iteration }}: {{ '%.6g'|format(v.value) }}</title>
+            </circle>
+            <text x="{{ x - 10 }}" y="{{ y - 10 }}" class="text-xs" fill="#334155">it{{ v.iteration }}</text>
+          {% endfor %}
+        </svg>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="text-slate-500 text-sm">No accepted candidates yet.</div>
+  {% endif %}
+  <div class="mt-2 text-xs text-slate-500">
+    Baseline score: {{ run.baseline_score | tojson }}
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6">
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-3">Committed versions</h3>
+    {% if run.points %}
+    <ul class="space-y-2 text-sm">
+      {% for p in run.points %}
+      <li class="border border-slate-200 rounded p-3">
+        <span class="font-medium">it{{ p.iteration }}</span>
+        <span class="font-mono text-xs text-slate-500">{{ p.sha[:12] }}</span>
+        <span class="text-xs">{{ p.tag }}</span>
+        <div class="text-xs text-slate-700 mt-1">{{ p.score | tojson }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="text-slate-500 text-sm">None.</div>{% endif %}
+  </div>
+  <div class="bg-white shadow rounded-lg p-4">
+    <h3 class="font-semibold mb-3">Supervisor activity</h3>
+    {% if run.interventions or run.escalations %}
+    <ul class="space-y-2 text-sm">
+      {% for i in run.interventions %}
+      <li class="border border-slate-200 rounded p-3">
+        it{{ i.iteration }} — supervisor intervention ({{ i.cause }})
+      </li>
+      {% endfor %}
+      {% for e in run.escalations %}
+      <li class="border border-amber-300 bg-amber-50 rounded p-3">
+        it{{ e.iteration }} — escalated to human
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<div class="text-slate-500 text-sm">None.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -6,6 +6,7 @@ from enum import Enum
 if sys.version_info >= (3, 11):
     from enum import StrEnum
 else:
+
     class StrEnum(str, Enum):  # type: ignore[no-redef]
         """Compatibility StrEnum for Python 3.10"""
 
@@ -43,6 +44,33 @@ class CritMarker(StrEnum):
     DECISION = "DECISION"
     REVISED_SOLUTION = "REVISED_SOLUTION"
     REASONING = "REASONING"
+
+
+class EvolveMarker(StrEnum):
+    SELF_REPORT = "SELF-REPORT"
+
+
+class GateOp(StrEnum):
+    GTE = ">="
+    GT = ">"
+    LTE = "<="
+    LT = "<"
+    EQ = "=="
+
+
+class CompareDirection(StrEnum):
+    MAXIMIZE = "maximize"
+    MINIMIZE = "minimize"
+
+
+class JudgeParseMode(StrEnum):
+    EXIT_CODE = "exit_code"
+    JSON_STDOUT = "json_stdout"
+
+
+class SupervisorIntervention(StrEnum):
+    DEBATE = "debate"
+    SINGLE_AGENT = "single_agent"
 
 
 class ValidatorName(StrEnum):
@@ -84,6 +112,44 @@ class RunEventKind(StrEnum):
 class RuntimeMode(StrEnum):
     DEBATE = "debate"
     AUTONOMOUS = "autonomous"
+    EVOLVE = "evolve"
+
+
+class EvolveRunStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"
+    WAITING_FOR_HUMAN = "waiting_for_human"
+    COMPLETED = "completed"
+    STOPPED = "stopped"
+    FAILED = "failed"
+
+
+class IterationOutcome(StrEnum):
+    COMMITTED = "committed"
+    REJECTED_GATE = "rejected_gate"
+    REJECTED_NOT_BETTER = "rejected_not_better"
+    WORKER_FAILED = "worker_failed"
+
+
+class VariationKind(StrEnum):
+    SINGLE_AGENT = "single_agent"
+    DEBATE = "debate"
+
+
+class SupervisorCause(StrEnum):
+    STALL = "stall"
+    LOOP = "loop"
+
+
+class EvolveStopReason(StrEnum):
+    TARGET_REACHED = "target_reached"
+    MAX_ITERATIONS = "max_iterations"
+    WALL_CLOCK = "wall_clock"
+    BUDGET = "budget"
+    MANUAL = "manual"
+    FATAL_ERROR = "fatal_error"
+    HUMAN_DECLINED = "human_declined"
 
 
 class TaskType(StrEnum):
@@ -191,3 +257,21 @@ class TaskEventKind(StrEnum):
     TASK_RESUMED = "task_resumed"
     TASK_COMPLETED = "task_completed"
     TASK_FAILED = "task_failed"
+
+
+class EvolveEventKind(StrEnum):
+    RUN_CREATED = "run_created"
+    RUN_STARTED = "run_started"
+    BASELINE_JUDGED = "baseline_judged"
+    ITERATION_STARTED = "iteration_started"
+    VARIATION_PRODUCED = "variation_produced"
+    CANDIDATE_JUDGED = "candidate_judged"
+    CANDIDATE_COMMITTED = "candidate_committed"
+    CANDIDATE_REJECTED = "candidate_rejected"
+    SUPERVISOR_TRIGGERED = "supervisor_triggered"
+    SUPERVISOR_DIRECTIONS = "supervisor_directions"
+    HUMAN_ESCALATED = "human_escalated"
+    HUMAN_INPUT_RECEIVED = "human_input_received"
+    RUN_PAUSED = "run_paused"
+    RUN_RESUMED = "run_resumed"
+    RUN_STOPPED = "run_stopped"

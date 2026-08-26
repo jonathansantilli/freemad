@@ -4,10 +4,19 @@ import dataclasses
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
-from freemad.types import ActionKind, TaskRole, TieBreak
+from freemad.types import (
+    ActionKind,
+    CompareDirection,
+    GateOp,
+    JudgeParseMode,
+    SupervisorIntervention,
+    TaskRole,
+    TieBreak,
+    VariationKind,
+)
 
 
 class ConfigError(ValueError):
@@ -42,6 +51,12 @@ class AgentConfig:
     cli_flags: List[str] = field(default_factory=list)
     # Extra positional args appended at the very end (order preserved), e.g., ['-']
     cli_positional: List[str] = field(default_factory=list)
+    # Extra flags for specific call modes only: {"generating": [...], "critique": [...],
+    # "task": [...]}. A debate's generate/critique calls are *thinking*, not doing --
+    # against a real repository an agent given tools will explore for minutes before it
+    # writes a word, and every generation call times out. `--tools ""` there, and tools
+    # only for `task-*` (act), is what makes a plan debate a single bounded call.
+    cli_mode_flags: Dict[str, List[str]] = field(default_factory=dict)
     roles: List[TaskRole] = field(default_factory=list)
     capabilities: List[ActionKind] = field(default_factory=list)
 
@@ -77,7 +92,13 @@ class SecurityConfig:
     api_key_source: Optional[str] = None
     api_key_name: Optional[str] = None
     redact_patterns: List[str] = field(
-        default_factory=lambda: [r"sk-[A-Za-z0-9_\-]+", r"(?i)api[_-]?key\s*[:=]\s*\S+"]
+        # `\b` matters: without it, "task-execute" contains "sk-execute" and gets
+        # rewritten to "ta[REDACTED]". That was cosmetic in logs; it is not cosmetic in
+        # the event store, which now runs payloads through the same redactor.
+        default_factory=lambda: [
+            r"\bsk-[A-Za-z0-9_\-]{8,}",
+            r"(?i)api[_-]?key\s*[:=]\s*\S+",
+        ]
     )
     max_requirement_size: int = 20000  # bytes/characters
     max_solution_size: int = 40000
@@ -87,7 +108,10 @@ class SecurityConfig:
     cli_allowed_commands: List[str] = field(
         default_factory=lambda: [
             # Keep intentionally strict; adapters can override via config
-            "zen", "zen-mcp", "claude", "codex",
+            "zen",
+            "zen-mcp",
+            "claude",
+            "codex",
         ]
     )
 
@@ -99,7 +123,9 @@ class BudgetConfig:
     max_agent_time_sec: Optional[float] = 20.0
     max_tokens_per_agent_per_round: Optional[int] = None
     max_total_tokens: Optional[int] = None
-    enforce_total_tokens: bool = False  # when True, exceeding raises; default = log only
+    enforce_total_tokens: bool = (
+        False  # when True, exceeding raises; default = log only
+    )
     enable_token_truncation: bool = True  # control prompt token truncation only
     max_concurrent_agents: Optional[int] = None
 
@@ -141,7 +167,14 @@ class TaskToolPolicyConfig:
     allow_local_commands: bool = True
     allowed_write_roots: List[str] = field(default_factory=lambda: ["."])
     allowed_local_commands: List[str] = field(
-        default_factory=lambda: ["python", "python3", "pytest", "poetry", "ruff", "mypy"]
+        default_factory=lambda: [
+            "python",
+            "python3",
+            "pytest",
+            "poetry",
+            "ruff",
+            "mypy",
+        ]
     )
     verification_commands: List[str] = field(default_factory=list)
 
@@ -153,6 +186,113 @@ class TaskConfig:
     max_stage_retries: int = 2
     max_total_iterations: int = 20
     tool_policy: TaskToolPolicyConfig = field(default_factory=TaskToolPolicyConfig)
+
+
+@dataclass(frozen=True)
+class GatePredicateConfig:
+    component: str
+    op: GateOp
+    value: float
+
+
+@dataclass(frozen=True)
+class ComparatorTermConfig:
+    component: str
+    direction: CompareDirection
+    epsilon: float = 0.0
+    # Maximum allowed regression versus best-ever on this component.
+    # None means: bound by epsilon (prevents cumulative drift).
+    max_regress: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class JudgeStageConfig:
+    name: str
+    command: str
+    timeout_sec: int = 600
+    parse: JudgeParseMode = JudgeParseMode.EXIT_CODE
+    provides: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ContainerConfig:
+    """Isolation for the code the runtime executes on an agent's behalf.
+
+    Off by default so existing configs keep working, but `evolve validate` says loudly
+    when a run will execute worker-authored code on the host.
+    """
+
+    enabled: bool = False
+    runtime: str = "docker"
+    image: str = "python:3.13-slim"
+    workdir: str = "/workspace"
+    memory: Optional[str] = None
+    cpus: Optional[str] = None
+    # "host/path" or "host/path:/container/path", mounted read-only. For material a
+    # judge legitimately needs and the worktree does not carry.
+    read_only_mounts: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class JudgeConfig:
+    stages: tuple[JudgeStageConfig, ...] = ()
+    gate: tuple[GatePredicateConfig, ...] = ()
+    comparator: tuple[ComparatorTermConfig, ...] = ()
+    protected_paths: tuple[str, ...] = ()
+    network: bool = False
+    container: ContainerConfig = field(default_factory=ContainerConfig)
+    # Extra environment variables judge stages and worker commands may see. Everything
+    # outside `sandbox.BASE_ALLOWLIST` plus these names is stripped, so the run's own
+    # credentials never reach worker-authored code.
+    env_passthrough: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class EvolveVariationConfig:
+    kind: VariationKind = VariationKind.SINGLE_AGENT
+    agent_id: Optional[str] = None
+    debate_rounds: int = 2
+    debate_agent_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class EvolveSupervisorConfig:
+    stall_window: int = 8
+    loop_threshold: int = 3
+    directions_ttl_iterations: int = 4
+    max_interventions_before_human: int = 3
+    intervention: SupervisorIntervention = SupervisorIntervention.DEBATE
+
+
+@dataclass(frozen=True)
+class EvolveStopConfig:
+    max_iterations: int = 40
+    max_wall_clock_minutes: int = 480
+    max_total_cost_usd: Optional[float] = None
+    target: tuple[GatePredicateConfig, ...] = ()
+
+
+@dataclass(frozen=True)
+class EvolveWorkerBudgetConfig:
+    max_minutes: int = 20
+    max_turns: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class EvolveConfig:
+    repo_path: str = "."
+    seed_ref: str = "HEAD"
+    run_branch_prefix: str = "evolve/"
+    variation: EvolveVariationConfig = field(default_factory=EvolveVariationConfig)
+    judge: JudgeConfig = field(default_factory=JudgeConfig)
+    supervisor: EvolveSupervisorConfig = field(default_factory=EvolveSupervisorConfig)
+    stop: EvolveStopConfig = field(default_factory=EvolveStopConfig)
+    store_path: str = ".freemad/evolve/evolve.db"
+    context_budget_chars: int = 8000
+    worker_budget: EvolveWorkerBudgetConfig = field(
+        default_factory=EvolveWorkerBudgetConfig
+    )
+    knowledge_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -168,6 +308,7 @@ class Config:
     validation: ValidationConfig = field(default_factory=ValidationConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     task: TaskConfig = field(default_factory=TaskConfig)
+    evolve: EvolveConfig = field(default_factory=EvolveConfig)
 
 
 # ----------------------
@@ -330,12 +471,309 @@ def _validate_task(task: TaskConfig) -> None:
         raise ConfigError("task.max_stage_retries must be >= 0")
     if task.max_total_iterations <= 0:
         raise ConfigError("task.max_total_iterations must be > 0")
-    if not all(isinstance(root, str) and root.strip() for root in task.tool_policy.allowed_write_roots):
-        raise ConfigError("task.tool_policy.allowed_write_roots must be non-empty strings")
-    if not all(isinstance(cmd, str) and cmd.strip() for cmd in task.tool_policy.allowed_local_commands):
-        raise ConfigError("task.tool_policy.allowed_local_commands must be non-empty strings")
-    if not all(isinstance(cmd, str) and cmd.strip() for cmd in task.tool_policy.verification_commands):
-        raise ConfigError("task.tool_policy.verification_commands must be non-empty strings")
+    if not all(
+        isinstance(root, str) and root.strip()
+        for root in task.tool_policy.allowed_write_roots
+    ):
+        raise ConfigError(
+            "task.tool_policy.allowed_write_roots must be non-empty strings"
+        )
+    if not all(
+        isinstance(cmd, str) and cmd.strip()
+        for cmd in task.tool_policy.allowed_local_commands
+    ):
+        raise ConfigError(
+            "task.tool_policy.allowed_local_commands must be non-empty strings"
+        )
+    if not all(
+        isinstance(cmd, str) and cmd.strip()
+        for cmd in task.tool_policy.verification_commands
+    ):
+        raise ConfigError(
+            "task.tool_policy.verification_commands must be non-empty strings"
+        )
+
+
+_GATE_OPS = tuple(op.value for op in GateOp)
+_ENV_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+# Passing any of these through hands a worker control of the process the judge starts,
+# which defeats the point of scrubbing in the first place.
+_ENV_PASSTHROUGH_DENYLIST = frozenset(
+    {
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "LD_AUDIT",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "PYTHONPATH",
+        "PYTHONSTARTUP",
+        "PYTHONHOME",
+        "PYTHONEXECUTABLE",
+        "BASH_ENV",
+        "ENV",
+        "NODE_OPTIONS",
+    }
+)
+
+
+def _validate_relative_path(path_str: str, label: str) -> None:
+    if not path_str or not path_str.strip():
+        raise ConfigError(f"evolve.{label} entries must be non-empty strings")
+    if "\x00" in path_str:
+        raise ConfigError(
+            f"evolve.{label} entries must not contain null bytes: {path_str!r}"
+        )
+    if path_str.strip() in {".", "./"}:
+        # The worktree root itself: restoring it would mean deleting the checkout.
+        raise ConfigError(
+            f"evolve.{label} entries must name a path inside the repo, not '.'"
+        )
+    if any(ch in path_str for ch in "*?[]"):
+        # git glob-expands these in `ls-tree`, while the Python side treats the same
+        # string as a literal path -- so the entry looks protected and protects nothing.
+        raise ConfigError(
+            f"evolve.{label} entries must not contain glob characters: {path_str}"
+        )
+    if path_str.startswith(":"):
+        # `:(exclude)tests`, `:!tests` and friends are git pathspec magic.
+        raise ConfigError(
+            f"evolve.{label} entries must not use git pathspec magic: {path_str}"
+        )
+    p = Path(path_str)
+    if p.is_absolute():
+        raise ConfigError(f"evolve.{label} entries must be relative paths: {path_str}")
+    if ".." in p.parts:
+        raise ConfigError(
+            f"evolve.{label} entries must not traverse upward: {path_str}"
+        )
+
+
+def _validate_gate_predicates(
+    gate: tuple[GatePredicateConfig, ...], provided: set[str], label: str
+) -> None:
+    for pred in gate:
+        if not pred.component:
+            raise ConfigError(f"evolve.{label} predicate component must be non-empty")
+        if pred.component not in provided:
+            raise ConfigError(
+                f"evolve.{label} references component '{pred.component}' "
+                f"not provided by any judge stage"
+            )
+        if not isinstance(pred.value, (int, float)):
+            raise ConfigError(f"evolve.{label} predicate value must be a number")
+
+
+def _validate_evolve(evolve: EvolveConfig, agents: List[AgentConfig]) -> None:
+    if not evolve.repo_path:
+        raise ConfigError("evolve.repo_path must be non-empty")
+    if not evolve.seed_ref:
+        raise ConfigError("evolve.seed_ref must be non-empty")
+    if not evolve.run_branch_prefix:
+        raise ConfigError("evolve.run_branch_prefix must be non-empty")
+    if evolve.context_budget_chars <= 0:
+        raise ConfigError("evolve.context_budget_chars must be > 0")
+
+    # Variation
+    var = evolve.variation
+    in_use = bool(evolve.judge.stages)
+    if var.kind not in (VariationKind.SINGLE_AGENT, VariationKind.DEBATE):
+        raise ConfigError("evolve.variation.kind must be single_agent|debate")
+    if (
+        in_use
+        and var.kind == VariationKind.SINGLE_AGENT
+        and not (var.agent_id and var.agent_id.strip())
+    ):
+        raise ConfigError(
+            "evolve.variation.agent_id is required for single_agent variation"
+        )
+    if var.kind == VariationKind.DEBATE and var.debate_rounds < 1:
+        raise ConfigError("evolve.variation.debate_rounds must be >= 1")
+    if var.debate_agent_ids:
+        if len(set(var.debate_agent_ids)) != len(var.debate_agent_ids):
+            raise ConfigError("evolve.variation.debate_agent_ids must be unique")
+        if len(var.debate_agent_ids) < 2:
+            raise ConfigError(
+                "evolve.variation.debate_agent_ids needs at least 2 agents to debate"
+            )
+        enabled = {a.id for a in agents if a.enabled}
+        missing = [i for i in var.debate_agent_ids if i not in enabled]
+        if missing:
+            # Otherwise the debate is constructed with too few agents, every iteration
+            # fails as WORKER_FAILED, and the run burns its whole budget in silence.
+            raise ConfigError(
+                f"evolve.variation.debate_agent_ids names no enabled agent: "
+                f"{', '.join(missing)}"
+            )
+    if in_use and not evolve.judge.comparator:
+        raise ConfigError(
+            "evolve.judge.comparator is required when judge stages are configured"
+        )
+
+    # Judge stages: unique names, sane timeouts, declared provisions.
+    stage_names = [s.name for s in evolve.judge.stages]
+    if len(stage_names) != len(set(stage_names)):
+        raise ConfigError("evolve.judge stage names must be unique")
+    provided: set[str] = set()
+    for stage in evolve.judge.stages:
+        if not stage.name or not stage.name.strip():
+            raise ConfigError("evolve.judge stage names must be non-empty")
+        if not stage.command or not stage.command.strip():
+            raise ConfigError(
+                f"evolve.judge stage {stage.name} command must be non-empty"
+            )
+        if stage.timeout_sec <= 0:
+            raise ConfigError(
+                f"evolve.judge stage {stage.name} timeout_sec must be > 0"
+            )
+        if stage.parse not in ("exit_code", "json_stdout"):
+            raise ConfigError(
+                f"evolve.judge stage {stage.name} parse must be exit_code|json_stdout"
+            )
+        if stage.parse == "exit_code" and stage.provides:
+            raise ConfigError(
+                f"evolve.judge stage {stage.name}: exit_code stages cannot provide components"
+            )
+        if stage.parse == "json_stdout":
+            if not stage.provides:
+                raise ConfigError(
+                    f"evolve.judge stage {stage.name}: json_stdout stages must declare provides"
+                )
+            for comp in stage.provides:
+                if not comp or not comp.strip():
+                    raise ConfigError(
+                        f"evolve.judge stage {stage.name}: component names must be non-empty"
+                    )
+                if comp in provided:
+                    raise ConfigError(
+                        f"evolve.judge component '{comp}' provided by multiple stages"
+                    )
+                provided.add(comp)
+
+    if provided and not evolve.judge.protected_paths:
+        # evolve.md section 2.2: every scored component must derive from at least one
+        # protected stage. Which stage that is takes a heuristic (hence a warning in
+        # `evolve validate`), but "no protected paths at all" needs none: the worker can
+        # rewrite every scorer.
+        raise ConfigError(
+            "evolve.judge declares scored components but no protected_paths; "
+            "the measurement would be fully worker-editable"
+        )
+
+    _validate_gate_predicates(evolve.judge.gate, provided, "judge.gate")
+
+    # Comparator: ordered terms over provided components with finite tolerances.
+    if evolve.judge.comparator:
+        seen_components = set()
+        for term in evolve.judge.comparator:
+            if term.component not in provided:
+                raise ConfigError(
+                    f"evolve.judge.comparator references component '{term.component}' "
+                    f"not provided by any judge stage"
+                )
+            if term.component in seen_components:
+                raise ConfigError(
+                    f"evolve.judge.comparator lists component '{term.component}' more than once"
+                )
+            seen_components.add(term.component)
+            if term.direction not in ("maximize", "minimize"):
+                raise ConfigError(
+                    f"evolve.judge.comparator[{term.component}] direction must be maximize|minimize"
+                )
+            if term.epsilon < 0:
+                raise ConfigError(
+                    f"evolve.judge.comparator[{term.component}] epsilon must be >= 0"
+                )
+            if term.max_regress is not None and term.max_regress < 0:
+                raise ConfigError(
+                    f"evolve.judge.comparator[{term.component}] max_regress must be >= 0 if set"
+                )
+
+    # Container isolation.
+    container = evolve.judge.container
+    if container.enabled:
+        if not container.image.strip():
+            raise ConfigError(
+                "evolve.judge.container.image must be non-empty when enabled"
+            )
+        if not container.runtime.strip():
+            raise ConfigError(
+                "evolve.judge.container.runtime must be non-empty when enabled"
+            )
+        if not container.workdir.startswith("/"):
+            raise ConfigError(
+                f"evolve.judge.container.workdir must be an absolute container path: "
+                f"{container.workdir}"
+            )
+        for mount in container.read_only_mounts:
+            host = mount.partition(":")[0]
+            if not host.strip():
+                raise ConfigError(
+                    "evolve.judge.container.read_only_mounts entries need a host path"
+                )
+
+    # Env passthrough: plausible variable names, no duplicates, no secrets by accident.
+    for name in evolve.judge.env_passthrough:
+        if not name or not name.strip():
+            raise ConfigError("evolve.judge.env_passthrough entries must be non-empty")
+        if not _ENV_NAME_RE.fullmatch(name):
+            raise ConfigError(
+                f"evolve.judge.env_passthrough entry is not a variable name: {name}"
+            )
+        if name in _ENV_PASSTHROUGH_DENYLIST:
+            raise ConfigError(
+                f"evolve.judge.env_passthrough must not include '{name}': it lets a "
+                f"worker steer the interpreter the judge runs, which is the surface the "
+                f"allowlist exists to close"
+            )
+    if len(evolve.judge.env_passthrough) != len(set(evolve.judge.env_passthrough)):
+        raise ConfigError("evolve.judge.env_passthrough entries must be unique")
+
+    # Protected paths: repo-relative, no traversal, unique.
+    for path_str in evolve.judge.protected_paths:
+        _validate_relative_path(path_str, "judge.protected_paths")
+    if len(evolve.judge.protected_paths) != len(set(evolve.judge.protected_paths)):
+        raise ConfigError("evolve.judge.protected_paths entries must be unique")
+
+    # Supervisor knobs.
+    sup = evolve.supervisor
+    if sup.stall_window < 1:
+        raise ConfigError("evolve.supervisor.stall_window must be >= 1")
+    if sup.loop_threshold < 1:
+        raise ConfigError("evolve.supervisor.loop_threshold must be >= 1")
+    if sup.directions_ttl_iterations < 1:
+        raise ConfigError("evolve.supervisor.directions_ttl_iterations must be >= 1")
+    if sup.max_interventions_before_human < 1:
+        raise ConfigError(
+            "evolve.supervisor.max_interventions_before_human must be >= 1"
+        )
+    if sup.intervention not in ("debate", "single_agent"):
+        raise ConfigError("evolve.supervisor.intervention must be debate|single_agent")
+
+    # Stop conditions.
+    stop = evolve.stop
+    if stop.max_iterations < 1:
+        raise ConfigError("evolve.stop.max_iterations must be >= 1")
+    if stop.max_wall_clock_minutes < 1:
+        raise ConfigError("evolve.stop.max_wall_clock_minutes must be >= 1")
+    if stop.max_total_cost_usd is not None and stop.max_total_cost_usd <= 0:
+        raise ConfigError("evolve.stop.max_total_cost_usd must be > 0 if set")
+    _validate_gate_predicates(stop.target, provided, "stop.target")
+
+    # Worker budget.
+    if evolve.worker_budget.max_minutes < 1:
+        raise ConfigError("evolve.worker_budget.max_minutes must be >= 1")
+    if (
+        evolve.worker_budget.max_turns is not None
+        and evolve.worker_budget.max_turns < 1
+    ):
+        raise ConfigError("evolve.worker_budget.max_turns must be >= 1 if set")
+
+    # Knowledge paths: read-only reference material, repo-relative.
+    for path_str in evolve.knowledge_paths:
+        _validate_relative_path(path_str, "knowledge_paths")
+    if len(evolve.knowledge_paths) != len(set(evolve.knowledge_paths)):
+        raise ConfigError("evolve.knowledge_paths entries must be unique")
 
 
 def validate_config(cfg: Config) -> None:
@@ -354,6 +792,7 @@ def validate_config(cfg: Config) -> None:
     if not cfg.cache.dir:
         raise ConfigError("cache.dir must be non-empty")
     _validate_task(cfg.task)
+    _validate_evolve(cfg.evolve, cfg.agents)
 
 
 # ----------------------
@@ -416,7 +855,9 @@ def _coerce_agent(obj: Dict[str, Any]) -> AgentConfig:
         id=str(obj.get("id", "")).strip(),
         type=str(obj.get("type", "")).strip(),
         enabled=bool(obj.get("enabled", True)),
-        cli_command=(str(obj["cli_command"]).strip() if obj.get("cli_command") else None),
+        cli_command=(
+            str(obj["cli_command"]).strip() if obj.get("cli_command") else None
+        ),
         timeout=float(obj.get("timeout", 60.0)),
         config=AgentRuntimeConfig(
             temperature=float(obj.get("config", {}).get("temperature", 0.7)),
@@ -427,11 +868,19 @@ def _coerce_agent(obj: Dict[str, Any]) -> AgentConfig:
             ),
         ),
         cli_mode_arg=bool(obj.get("cli_mode_arg", False)),
-        cli_args={str(k): str(v) for k, v in dict(obj.get("cli_args", {}) or {}).items()},
+        cli_args={
+            str(k): str(v) for k, v in dict(obj.get("cli_args", {}) or {}).items()
+        },
         cli_flags=[str(x) for x in list(obj.get("cli_flags", []) or [])],
         cli_positional=[str(x) for x in list(obj.get("cli_positional", []) or [])],
+        cli_mode_flags={
+            str(k): [str(x) for x in list(v or [])]
+            for k, v in dict(obj.get("cli_mode_flags", {}) or {}).items()
+        },
         roles=[_coerce_task_role(x) for x in list(obj.get("roles", []) or [])],
-        capabilities=[_coerce_action_kind(x) for x in list(obj.get("capabilities", []) or [])],
+        capabilities=[
+            _coerce_action_kind(x) for x in list(obj.get("capabilities", []) or [])
+        ],
     )
 
 
@@ -490,6 +939,187 @@ def _coerce_action_kind(v: Any) -> ActionKind:
     raise ConfigError(f"invalid action kind: {v}")
 
 
+def _coerce_enum(value: Any, enum_cls: Any, label: str) -> Any:
+    """Config strings become enum members at the boundary, per AGENTS.md."""
+    try:
+        return enum_cls(str(value).strip())
+    except ValueError:
+        allowed = "|".join(m.value for m in enum_cls)
+        raise ConfigError(f"{label} must be {allowed}") from None
+
+
+def _coerce_variation_kind(v: Any) -> VariationKind:
+    if isinstance(v, VariationKind):
+        return v
+    s = str(v).strip().lower()
+    for kind in VariationKind:
+        if kind.value == s:
+            return kind
+    raise ConfigError("evolve.variation.kind must be single_agent|debate")
+
+
+def _coerce_gate_predicates(items: Any, label: str) -> tuple[GatePredicateConfig, ...]:
+    if not items:
+        return ()
+    if not isinstance(items, list):
+        raise ConfigError(f"evolve.{label} must be a list")
+    predicates: List[GatePredicateConfig] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ConfigError(f"evolve.{label} entries must be mappings")
+        component = str(item.get("component", "")).strip()
+        raw_op = str(item.get("op", GateOp.GTE.value))
+        if raw_op not in _GATE_OPS:
+            raise ConfigError(f"evolve.{label} op must be one of {_GATE_OPS}")
+        predicates.append(
+            GatePredicateConfig(
+                component=component,
+                op=GateOp(raw_op),
+                value=float(item.get("value", 0.0)),
+            )
+        )
+    return tuple(predicates)
+
+
+def _coerce_comparator(items: Any) -> tuple[ComparatorTermConfig, ...]:
+    if not items:
+        return ()
+    if not isinstance(items, list):
+        raise ConfigError("evolve.judge.comparator must be a list")
+    terms: List[ComparatorTermConfig] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ConfigError("evolve.judge.comparator entries must be mappings")
+        max_regress_raw = item.get("max_regress")
+        terms.append(
+            ComparatorTermConfig(
+                component=str(item.get("component", "")).strip(),
+                direction=_coerce_enum(
+                    item.get("direction", CompareDirection.MAXIMIZE.value),
+                    CompareDirection,
+                    "evolve.judge.comparator direction",
+                ),
+                epsilon=float(item.get("epsilon", 0.0)),
+                max_regress=(
+                    float(max_regress_raw) if max_regress_raw is not None else None
+                ),
+            )
+        )
+    return tuple(terms)
+
+
+def _coerce_container(raw: Any) -> ContainerConfig:
+    data = dict(raw or {})
+    return ContainerConfig(
+        enabled=bool(data.get("enabled", False)),
+        # An ABSENT key gets the default; a key the operator wrote as blank is kept
+        # blank so validation rejects it. Substituting a default for something someone
+        # explicitly typed is how a config comes to mean something other than it says.
+        runtime=str(data.get("runtime", "docker")).strip(),
+        image=str(data.get("image", "python:3.13-slim")).strip(),
+        workdir=str(data.get("workdir", "/workspace")).strip(),
+        memory=_opt_str(data.get("memory")),
+        cpus=_opt_str(data.get("cpus")),
+        read_only_mounts=_str_tuple(data.get("read_only_mounts")),
+    )
+
+
+def _coerce_judge_stages(items: Any) -> tuple[JudgeStageConfig, ...]:
+    if not items:
+        return ()
+    if not isinstance(items, list):
+        raise ConfigError("evolve.judge.stages must be a list")
+    stages: List[JudgeStageConfig] = []
+    for item in items:
+        if not isinstance(item, dict):
+            raise ConfigError("evolve.judge.stages entries must be mappings")
+        provides_raw = item.get("provides", [])
+        stages.append(
+            JudgeStageConfig(
+                name=str(item.get("name", "")).strip(),
+                command=str(item.get("command", "")).strip(),
+                timeout_sec=int(item.get("timeout_sec", 600)),
+                parse=_coerce_enum(
+                    item.get("parse", JudgeParseMode.EXIT_CODE.value),
+                    JudgeParseMode,
+                    "evolve.judge stage parse",
+                ),
+                provides=tuple(str(x).strip() for x in list(provides_raw or [])),
+            )
+        )
+    return tuple(stages)
+
+
+def _str_tuple(items: Any) -> tuple[str, ...]:
+    if not items:
+        return ()
+    if isinstance(items, (str, bytes)):
+        # `list("bench.py")` is eight one-character entries, every one of which passes
+        # each per-entry check -- silently protecting nothing at all.
+        raise ConfigError(f"expected a list of strings, got a single value: {items!r}")
+    return tuple(str(x).strip() for x in list(items))
+
+
+def _coerce_evolve(evolve: Dict[str, Any]) -> EvolveConfig:
+    variation = dict(evolve.get("variation", {}) or {})
+    judge = dict(evolve.get("judge", {}) or {})
+    supervisor = dict(evolve.get("supervisor", {}) or {})
+    stop = dict(evolve.get("stop", {}) or {})
+    worker_budget = dict(evolve.get("worker_budget", {}) or {})
+    cost_raw = stop.get("max_total_cost_usd")
+    turns_raw = worker_budget.get("max_turns")
+    return EvolveConfig(
+        repo_path=str(evolve.get("repo_path", ".")).strip() or ".",
+        seed_ref=str(evolve.get("seed_ref", "HEAD")).strip() or "HEAD",
+        run_branch_prefix=str(evolve.get("run_branch_prefix", "evolve/")),
+        variation=EvolveVariationConfig(
+            kind=_coerce_variation_kind(
+                variation.get("kind", VariationKind.SINGLE_AGENT)
+            ),
+            agent_id=_opt_str(variation.get("agent_id")),
+            debate_rounds=int(variation.get("debate_rounds", 2)),
+            debate_agent_ids=_str_tuple(variation.get("debate_agent_ids")),
+        ),
+        judge=JudgeConfig(
+            stages=_coerce_judge_stages(judge.get("stages")),
+            gate=_coerce_gate_predicates(judge.get("gate"), "judge.gate"),
+            comparator=_coerce_comparator(judge.get("comparator")),
+            protected_paths=_str_tuple(judge.get("protected_paths")),
+            network=bool(judge.get("network", False)),
+            container=_coerce_container(judge.get("container")),
+            env_passthrough=_str_tuple(judge.get("env_passthrough")),
+        ),
+        supervisor=EvolveSupervisorConfig(
+            stall_window=int(supervisor.get("stall_window", 8)),
+            loop_threshold=int(supervisor.get("loop_threshold", 3)),
+            directions_ttl_iterations=int(
+                supervisor.get("directions_ttl_iterations", 4)
+            ),
+            max_interventions_before_human=int(
+                supervisor.get("max_interventions_before_human", 3)
+            ),
+            intervention=_coerce_enum(
+                supervisor.get("intervention", SupervisorIntervention.DEBATE.value),
+                SupervisorIntervention,
+                "evolve.supervisor.intervention",
+            ),
+        ),
+        stop=EvolveStopConfig(
+            max_iterations=int(stop.get("max_iterations", 40)),
+            max_wall_clock_minutes=int(stop.get("max_wall_clock_minutes", 480)),
+            max_total_cost_usd=(float(cost_raw) if cost_raw is not None else None),
+            target=_coerce_gate_predicates(stop.get("target"), "stop.target"),
+        ),
+        store_path=str(evolve.get("store_path", ".freemad/evolve/evolve.db")),
+        context_budget_chars=int(evolve.get("context_budget_chars", 8000)),
+        worker_budget=EvolveWorkerBudgetConfig(
+            max_minutes=int(worker_budget.get("max_minutes", 20)),
+            max_turns=(int(turns_raw) if turns_raw is not None else None),
+        ),
+        knowledge_paths=_str_tuple(evolve.get("knowledge_paths")),
+    )
+
+
 def _coerce(cfg_dict: Dict[str, Any]) -> Config:
     agents_list = cfg_dict.get("agents")
     if not agents_list:
@@ -527,25 +1157,35 @@ def _coerce(cfg_dict: Dict[str, Any]) -> Config:
         scoring=ScoringConfig(
             weights=[float(x) for x in scoring.get("weights", [20, 25, 30, 20])],
             normalize=bool(scoring.get("normalize", True)),
-            tie_break=_coerce_tiebreak(scoring.get("tie_break", TieBreak.DETERMINISTIC)),
+            tie_break=_coerce_tiebreak(
+                scoring.get("tie_break", TieBreak.DETERMINISTIC)
+            ),
             random_seed=int(scoring.get("random_seed", 987654321)),
         ),
         security=SecurityConfig(
             api_key_source=security.get("api_key_source"),
             api_key_name=security.get("api_key_name"),
-            redact_patterns=list(security.get("redact_patterns", SecurityConfig().redact_patterns)),
+            redact_patterns=list(
+                security.get("redact_patterns", SecurityConfig().redact_patterns)
+            ),
             max_requirement_size=int(security.get("max_requirement_size", 20000)),
             max_solution_size=int(security.get("max_solution_size", 40000)),
             max_critique_size=int(security.get("max_critique_size", 20000)),
             cli_use_shell=bool(security.get("cli_use_shell", False)),
             cli_timeout_ms=int(security.get("cli_timeout_ms", 60000)),
-            cli_allowed_commands=list(security.get("cli_allowed_commands", SecurityConfig().cli_allowed_commands)),
+            cli_allowed_commands=list(
+                security.get(
+                    "cli_allowed_commands", SecurityConfig().cli_allowed_commands
+                )
+            ),
         ),
         budget=BudgetConfig(
             max_total_time_sec=_opt_float(budget.get("max_total_time_sec", 120.0)),
             max_round_time_sec=_opt_float(budget.get("max_round_time_sec", 30.0)),
             max_agent_time_sec=_opt_float(budget.get("max_agent_time_sec", 20.0)),
-            max_tokens_per_agent_per_round=_opt_int(budget.get("max_tokens_per_agent_per_round")),
+            max_tokens_per_agent_per_round=_opt_int(
+                budget.get("max_tokens_per_agent_per_round")
+            ),
             max_total_tokens=_opt_int(budget.get("max_total_tokens")),
             enforce_total_tokens=bool(budget.get("enforce_total_tokens", False)),
             enable_token_truncation=bool(budget.get("enable_token_truncation", True)),
@@ -576,22 +1216,37 @@ def _coerce(cfg_dict: Dict[str, Any]) -> Config:
         task=TaskConfig(
             store_path=str(task.get("store_path", TaskConfig().store_path)),
             artifacts_dir=str(task.get("artifacts_dir", TaskConfig().artifacts_dir)),
-            max_stage_retries=int(task.get("max_stage_retries", TaskConfig().max_stage_retries)),
-            max_total_iterations=int(task.get("max_total_iterations", TaskConfig().max_total_iterations)),
+            max_stage_retries=int(
+                task.get("max_stage_retries", TaskConfig().max_stage_retries)
+            ),
+            max_total_iterations=int(
+                task.get("max_total_iterations", TaskConfig().max_total_iterations)
+            ),
             tool_policy=TaskToolPolicyConfig(
-                allow_web_research=bool(task_tool_policy.get("allow_web_research", True)),
-                allow_workspace_write=bool(task_tool_policy.get("allow_workspace_write", True)),
-                allow_local_commands=bool(task_tool_policy.get("allow_local_commands", True)),
-                allowed_write_roots=list(task_tool_policy.get("allowed_write_roots", ["."])),
+                allow_web_research=bool(
+                    task_tool_policy.get("allow_web_research", True)
+                ),
+                allow_workspace_write=bool(
+                    task_tool_policy.get("allow_workspace_write", True)
+                ),
+                allow_local_commands=bool(
+                    task_tool_policy.get("allow_local_commands", True)
+                ),
+                allowed_write_roots=list(
+                    task_tool_policy.get("allowed_write_roots", ["."])
+                ),
                 allowed_local_commands=list(
                     task_tool_policy.get(
                         "allowed_local_commands",
                         TaskToolPolicyConfig().allowed_local_commands,
                     )
                 ),
-                verification_commands=list(task_tool_policy.get("verification_commands", [])),
+                verification_commands=list(
+                    task_tool_policy.get("verification_commands", [])
+                ),
             ),
         ),
+        evolve=_coerce_evolve(dict(cfg_dict.get("evolve", {}) or {})),
     )
     return cfg
 
@@ -620,6 +1275,7 @@ def load_config(
         base_dict = _deep_update(base_dict, overrides)
 
     cfg = _coerce(base_dict)
+    cfg = _resolve_evolve_paths(cfg, config_root)
     validate_config(cfg)
 
     # Ensure transcript dir exists if requested
@@ -630,6 +1286,30 @@ def load_config(
         _ensure_dir(cfg.cache.dir, config_root)
 
     return cfg
+
+
+def _resolve_evolve_paths(cfg: Config, root: Path) -> Config:
+    """Anchor `evolve.repo_path` and `store_path` to the config file's directory.
+
+    Every other config-managed path already resolves against the config root. Leaving
+    these two relative to the *working* directory means `--config
+    examples/evolve_toy/evolve.yaml`, run from the repo root exactly as the README
+    shows, silently optimizes the outer repository instead.
+    """
+
+    def _anchor(value: str) -> str:
+        path = Path(value)
+        return str(path if path.is_absolute() else (root / path).resolve())
+
+    evolve = cfg.evolve
+    return replace(
+        cfg,
+        evolve=replace(
+            evolve,
+            repo_path=_anchor(evolve.repo_path),
+            store_path=_anchor(evolve.store_path),
+        ),
+    )
 
 
 def _ensure_dir(path_str: str, root: Path) -> None:
@@ -656,13 +1336,19 @@ def _resolve_existing_config_file(path_str: str | os.PathLike[str]) -> Path:
 def _resolve_config_file_path(path_str: str | os.PathLike[str]) -> Path:
     raw = Path(path_str)
     # codeql[py/path-injection] the resolved path is validated before any file access occurs.
-    resolved = raw.resolve() if raw.is_absolute() else (Path.cwd().resolve() / raw).resolve()
+    resolved = (
+        raw.resolve() if raw.is_absolute() else (Path.cwd().resolve() / raw).resolve()
+    )
     if resolved.suffix.lower() not in {".json", ".yaml", ".yml"}:
-        raise ConfigError(f"config path must point to a .json, .yaml, or .yml file: {resolved}")
+        raise ConfigError(
+            f"config path must point to a .json, .yaml, or .yml file: {resolved}"
+        )
     return resolved
 
 
-def _resolve_path_under_root(path_str: str | os.PathLike[str], root: Path, label: str) -> Path:
+def _resolve_path_under_root(
+    path_str: str | os.PathLike[str], root: Path, label: str
+) -> Path:
     raw = Path(path_str)
 
     # codeql[py/path-injection] the resolved path is checked to remain under `root` before use.

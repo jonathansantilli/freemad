@@ -12,7 +12,7 @@ agents:
     type: claude_code              # required; adapter type
     enabled: true                  # default: true
     cli_command: null              # e.g., "claude" or "zen-mcp claude"; read prompt from stdin
-    cli_args: {}                   # extra flags as key-value; {'model': 'gpt-4o'} -> "--model gpt-4o"; keys starting with '-' are used as-is
+    cli_args: {}                   # extra flags as key-value; {'model': 'gpt-5.3-codex'} -> "--model gpt-5.3-codex"; keys starting with '-' are used as-is
     cli_flags: []                  # single flags without values (order preserved), e.g., ['--enable-feature', '-v']
     cli_positional: []             # positional args appended at end (order preserved), e.g., ['-']
     timeout: 60                    # per-call timeout in seconds

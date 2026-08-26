@@ -1,0 +1,71 @@
+# Evolve proving-ground config (toy example).
+agents:
+  # Auth is the CLI's own logged-in session (a Claude subscription) — freemad never
+  # reads an API key. `claude` is already in `security.cli_allowed_commands`, so no
+  # allowlist widening is needed, and there is no relative wrapper path to resolve.
+  #
+  # `timeout` is not optional in practice. The adapter uses
+  # max(agent.timeout, security.cli_timeout_ms, budget.max_agent_time_sec), and all
+  # three default to 60s or less — which a real model doing a code edit blows through
+  # every time. Without this the run does its whole iteration budget of timeouts and
+  # stops cleanly, having changed nothing.
+  - id: worker
+    type: claude_code
+    cli_command: "claude -p --model opus --dangerously-skip-permissions"
+    timeout: 600
+    enabled: true
+  - id: peer
+    type: claude_code
+    cli_command: "claude -p --model opus --dangerously-skip-permissions"
+    timeout: 600
+    enabled: true
+
+task:
+  tool_policy:
+    allow_workspace_write: true
+    allow_local_commands: true
+    allowed_local_commands: [python, python3, pytest]
+
+evolve:
+  repo_path: .
+  seed_ref: HEAD
+  variation:
+    kind: single_agent
+    agent_id: worker
+  judge:
+    stages:
+      - name: tests
+        command: python3 -m pytest tests -q
+        timeout_sec: 120
+        parse: exit_code
+      - name: bench
+        command: python3 bench.py
+        timeout_sec: 120
+        parse: json_stdout
+        provides: [ops_per_sec]
+    gate:
+      - component: ops_per_sec
+        op: ">"
+        value: 0
+    comparator:
+      - component: ops_per_sec
+        direction: maximize
+        # Measured over 25 runs: median ~2771, sigma ~102, spread ~368. An epsilon of
+        # 50 is half a sigma -- two runs of *identical* code differ by more than that
+        # ~73% of the time, so noise alone got committed as an improvement. 400 is
+        # ~4 sigma; the real optimization is worth ~3000x, so nothing genuine is lost.
+        epsilon: 400.0
+    protected_paths:
+      - bench.py
+      - tests/
+  stop:
+    max_iterations: 10
+    max_wall_clock_minutes: 30
+    target:
+      # Baseline is ~2.9k ops/sec; the closed form reaches ~11M. 100k is far outside
+      # the noise band in both directions, so reaching it means real optimization.
+      - component: ops_per_sec
+        op: ">="
+        value: 100000
+  worker_budget:
+    max_minutes: 10

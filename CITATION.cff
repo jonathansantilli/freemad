@@ -2,10 +2,21 @@ cff-version: 1.2.0
 message: >-
   If you use this software, please cite it as below.
 title: FREE-MAD Orchestrator
-version: 0.2.0
+version: 2.0.0
 authors:
   - family-names: Santilli
     given-names: Jonathan
     email: jonathansantilli@gmail.com
 date-released: 2025-11-07
 repository-code: https://github.com/jonathansantilli/mad
+references:
+  - type: article
+    title: "Free-MAD: Consensus-Free Multi-Agent Debate"
+    url: https://arxiv.org/abs/2509.11035
+    notes: The debate algorithm this project implements.
+  - type: article
+    title: "Agentic Variation Operators"
+    url: https://arxiv.org/abs/2603.24517
+    notes: >-
+      The origin of the evolve runtime, re-targeted so debate is the variation
+      operator and a deterministic judge is the selection mechanism.

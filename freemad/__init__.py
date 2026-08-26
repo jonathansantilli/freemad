@@ -9,7 +9,7 @@ This module re-exports commonly used classes/functions so imports like
 __version__ = "0.2.0"
 
 # Config
-from freemad.config import (
+from freemad.config import (  # noqa: E402
     Config,
     ConfigError,
     load_config,
@@ -44,7 +44,11 @@ from freemad.types import (  # noqa: E402
 )
 
 # Prompts
-from freemad.prompts import build_generation_prompt, build_critique_prompt, build_task_prompt  # noqa: E402
+from freemad.prompts import (  # noqa: E402
+    build_generation_prompt,
+    build_critique_prompt,
+    build_task_prompt,
+)
 
 # Utils
 from freemad.utils import (  # noqa: E402
@@ -84,9 +88,19 @@ from freemad.agents.cli_adapter import CLIAdapter  # noqa: E402
 from freemad.topology import build_topology  # noqa: E402
 from freemad.scoring import ScoreTracker  # noqa: E402
 from freemad.orchestrator import Orchestrator  # noqa: E402
-from freemad.run_events import RunEvent, RunObserver, NullObserver, FanOutObserver  # noqa: E402
+from freemad.run_events import (  # noqa: E402
+    RunEvent,
+    RunObserver,
+    NullObserver,
+    FanOutObserver,
+)
 from freemad.types import RunEventKind  # noqa: E402
-from freemad.task_events import TaskEvent, TaskObserver, NullTaskObserver, FanOutTaskObserver  # noqa: E402
+from freemad.task_events import (  # noqa: E402
+    TaskEvent,
+    TaskObserver,
+    NullTaskObserver,
+    FanOutTaskObserver,
+)
 from freemad.tasks import (  # noqa: E402
     ArtifactRef,
     FileWrite,
@@ -100,6 +114,20 @@ from freemad.tasks import (  # noqa: E402
     WorkItem,
 )
 from freemad.tasks.orchestrator import TaskOrchestrator  # noqa: E402
+
+# Evolve runtime
+from freemad.evolve import (  # noqa: E402
+    EvolveEvent,
+    EvolveRunSnapshot,
+    EvolveStore,
+    IterationRecord,
+    JudgeVerdict,
+    ScoreVector as EvolveScoreVector,
+    VariationResult,
+)
+from freemad.evolve.judge import compare_scores, evaluate_gate  # noqa: E402
+from freemad.evolve.lineage import Lineage  # noqa: E402
+from freemad.evolve.orchestrator import EvolveOrchestrator  # noqa: E402
 
 # Validation
 from freemad.validation import ValidationManager  # noqa: E402
@@ -196,6 +224,18 @@ __all__ = [
     "TaskStore",
     "TaskOrchestrator",
     "WorkItem",
+    # evolve runtime
+    "EvolveEvent",
+    "EvolveRunSnapshot",
+    "EvolveStore",
+    "EvolveOrchestrator",
+    "EvolveScoreVector",
+    "IterationRecord",
+    "JudgeVerdict",
+    "Lineage",
+    "VariationResult",
+    "compare_scores",
+    "evaluate_gate",
     # validation
     "ValidationManager",
     "SandboxValidator",

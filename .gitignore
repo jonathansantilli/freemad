@@ -21,10 +21,12 @@ dist/
 node_modules/
 freemad_dashboard_ui/node_modules/
 
-# IDEs
+# IDEs / agent tooling. Skills are local configuration, not source: the canonical
+# copy is .claude/skills/, and .agents/skills/ holds pointers to it (see AGENTS.md).
 .idea/
 .vscode/
 .claude/
+.agents/
 
 # Local cache and logs
 .mad_cache/
@@ -35,6 +37,11 @@ freemad_dashboard_ui/node_modules/
 # Transcripts and artifacts
 transcripts/*.json
 transcripts/*.md
+
+# Runtime state for the task and evolve runtimes: SQLite stores, per-iteration git
+# worktrees, debate transcripts. Derived, per-machine, never source.
+.freemad/
+
 docs/plans/
 .coverage
 coverage.xml
