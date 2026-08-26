@@ -8,7 +8,7 @@ import sys
 import time
 from dataclasses import replace
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import pytest
 
@@ -143,7 +143,7 @@ def build(cfg, scripts: List[Optional[str]], agent_cls=SupervisedAgent):
 
 
 RUNNER = """
-import sys, time, json
+import os, sys, time, json
 sys.path.insert(0, "__PROJECT__")
 from freemad.config import load_config
 from freemad.agents import bootstrap
@@ -174,6 +174,10 @@ class RunnerWorker(Agent):
         )
 
     def act(self, request):
+        # Hold the iteration open so the test can kill the run *during* variation. An
+        # instant worker leaves the worktree in place for ~65 ms, a window a 50 ms poll
+        # on a loaded CI runner can miss outright — which is what happened on 3.11.
+        time.sleep(float(os.environ.get("FREEMAD_TEST_ACT_SLEEP", "0")))
         return TaskResponse(
             agent_id=self.agent_cfg.id,
             stage=request.stage,
@@ -387,18 +391,55 @@ class TestStopReasons:
 
 
 class TestSigkillResume:
-    def _run_runner(self, script_text: str, project_root: Path, env_extra: dict):
+    def _run_runner(
+        self, script_text: str, project_root: Path, log_dir: Path, env_extra: dict
+    ):
         env = dict(os.environ)
         env["PYTHONPATH"] = str(project_root) + os.pathsep + env.get("PYTHONPATH", "")
         env.update(env_extra)
-        proc = subprocess.Popen(
-            [sys.executable, "-u", "-c", script_text],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=env,
-        )
-        return proc
+        # Files, not pipes. A pipe nobody drains stalls the runner once it fills, and a
+        # pipe nobody reads leaves no trace of why the runner stopped where it did — CI
+        # produced exactly that: "worktree never appeared" and nothing else to go on.
+        with (
+            open(log_dir / "runner.stdout", "w") as out,
+            open(log_dir / "runner.stderr", "w") as err,
+        ):
+            return subprocess.Popen(
+                [sys.executable, "-u", "-c", script_text],
+                stdout=out,
+                stderr=err,
+                env=env,
+            )
+
+    @staticmethod
+    def _wait_for(predicate: Callable[[], bool], timeout: float) -> bool:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if predicate():
+                return True
+            time.sleep(0.05)
+        return predicate()
+
+    @staticmethod
+    def _diagnosis(
+        proc: subprocess.Popen[bytes], log_dir: Path, store_path: str, run_id: str
+    ) -> str:
+        """What the runner was doing when the test gave up on it."""
+        state = "still running" if proc.poll() is None else f"exited {proc.returncode}"
+        parts = [f"runner {state}"]
+        for name in ("runner.stdout", "runner.stderr"):
+            text = (log_dir / name).read_text().strip()
+            parts.append(f"{name}: {text[-1500:] or '<empty>'}")
+        if run_id:
+            store = EvolveStore(Path(store_path))
+            try:
+                trail = [
+                    f"{e.iteration}:{e.kind.value}" for e in store.list_events(run_id)
+                ]
+            finally:
+                store.close()
+            parts.append("events: " + (", ".join(trail) or "<none>"))
+        return "\n".join(parts)
 
     def test_kill9_mid_variation_costs_at_most_one_iteration(self, tmp_path):
         project_root = Path(__file__).resolve().parents[3]
@@ -427,23 +468,41 @@ class TestSigkillResume:
             .replace("__CFG__", runner_cfg)
             .replace("__GOAL__", "kill test goal")
         )
-        proc = self._run_runner(script, project_root, {})
-        run_id_line = proc.stdout.readline().strip() if proc.stdout else ""
-        deadline = time.time() + 20
-        while not run_id_line and time.time() < deadline:
-            time.sleep(0.05)
-            run_id_line = (proc.stdout.readline() if proc.stdout else "").strip()
-        assert run_id_line, "runner did not report run id"
+        log_dir = tmp_path / "runner_logs"
+        log_dir.mkdir()
+        # The worker holds each variation open for a minute (the agent timeout is two), so
+        # the kill below lands inside iteration 1, not after it.
+        proc = self._run_runner(
+            script, project_root, log_dir, {"FREEMAD_TEST_ACT_SLEEP": "60"}
+        )
+        store_path = slow_cfg.evolve.store_path
 
-        # Wait until the worker's variation phase started (iteration worktree exists).
-        wt = repo / ".freemad" / "evolve" / "worktrees" / run_id_line / "it1"
-        deadline = time.time() + 30
-        while not wt.exists() and time.time() < deadline:
-            time.sleep(0.05)
-        assert wt.exists(), "variation worktree never appeared"
+        def first_line() -> str:
+            lines = (log_dir / "runner.stdout").read_text().splitlines()
+            return lines[0].strip() if lines else ""
 
-        os.kill(proc.pid, signal.SIGKILL)
-        proc.wait(timeout=10)
+        try:
+            # Bounded: a readline() on the pipe blocked for as long as the runner stayed
+            # silent, which is forever if it never got as far as printing.
+            assert self._wait_for(lambda: bool(first_line()), 30), (
+                "runner did not report run id\n"
+                + self._diagnosis(proc, log_dir, store_path, "")
+            )
+            run_id_line = first_line()
+
+            # Wait until the worker's variation phase started (iteration worktree
+            # exists). The baseline is judged first — two stages, 60s timeout each — so
+            # the bound covers a slow CI runner doing that, not just a quick local one.
+            wt = repo / ".freemad" / "evolve" / "worktrees" / run_id_line / "it1"
+            assert self._wait_for(wt.exists, 180), (
+                "variation worktree never appeared\n"
+                + self._diagnosis(proc, log_dir, store_path, run_id_line)
+            )
+        finally:
+            # The point of the test when the waits succeed; cleanup when they do not.
+            if proc.poll() is None:
+                os.kill(proc.pid, signal.SIGKILL)
+            proc.wait(timeout=10)
 
         # Fresh orchestrator resumes from persisted events only.
         orch2 = EvolveOrchestrator(load_config(path=runner_cfg))
