@@ -65,4 +65,4 @@ jobs:
         env:
           SMOKE: "1"
         run: |
-          pytest -q tests/pkg_mad/agents/test_smoke_adapters.py
+          pytest -q tests/pkg_mad/agents/test_smoke_adapters.py tests/pkg_mad/tasks/test_smoke_autonomous_cli.py

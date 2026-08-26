@@ -2,7 +2,7 @@ agents:
   - id: smoke_researcher
     type: claude_code
     cli_command: "python3 bin/structured_human_task_mock.py"
-    roles: ["researcher"]
+    roles: ["researcher", "arbiter"]
 
   - id: smoke_planner
     type: openai_codex
@@ -12,7 +12,7 @@ agents:
   - id: smoke_reviewer
     type: claude_code
     cli_command: "python3 bin/structured_human_task_mock.py"
-    roles: ["reviewer", "arbiter", "verifier"]
+    roles: ["reviewer", "verifier"]
 
 security:
   cli_allowed_commands:

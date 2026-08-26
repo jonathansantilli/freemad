@@ -83,10 +83,20 @@ def _free_text_request() -> dict[str, Any]:
     }
 
 
+def _question_for(goal: str) -> str:
+    normalized_goal = goal.lower()
+    request = _single_select_request()
+    if "multi" in normalized_goal:
+        request = _multi_select_request()
+    elif "free text" in normalized_goal or "free-text" in normalized_goal:
+        request = _free_text_request()
+    options = ", ".join(o["label"] for o in request["options"])
+    return request["question"] + (f" ({options})" if options else "")
+
+
 def _response_for(
     stage: str, role: str, goal: str, has_human_response: bool
 ) -> dict[str, Any]:
-    normalized_goal = goal.lower()
     if role == "researcher" and stage == "research":
         return {
             "agent_id": "mock-researcher",
@@ -125,18 +135,24 @@ def _response_for(
                 "content": "Human clarification received. The plan is now implementation-ready.",
                 "review_decision": "approve",
             }
-        request = _single_select_request()
-        if "multi" in normalized_goal:
-            request = _multi_select_request()
-        elif "free text" in normalized_goal or "free-text" in normalized_goal:
-            request = _free_text_request()
         return {
             "agent_id": "mock-reviewer",
             "stage": stage,
             "role": role,
             "content": "The plan needs one explicit human choice before approval.",
             "review_decision": "revise",
-            "human_request": request,
+            "findings": [_question_for(goal)],
+        }
+    if role == "arbiter" and stage == "plan_review":
+        # Withholding approval here is what parks the task in waiting_for_human; the
+        # finding becomes the question the operator sees in `task status`.
+        return {
+            "agent_id": "mock-arbiter",
+            "stage": stage,
+            "role": role,
+            "content": "Cannot arbitrate a product decision; asking the human.",
+            "review_decision": "reject",
+            "findings": [_question_for(goal)],
         }
     if role == "planner" and stage == "finalize":
         return {
@@ -159,8 +175,10 @@ def main() -> int:
     stage = str(request.get("stage", "research"))
     role = str(request.get("role", "reviewer"))
     goal = str(request.get("goal", ""))
-    human_responses = request.get("human_responses", [])
-    has_human_response = isinstance(human_responses, list) and len(human_responses) > 0
+    feedback = request.get("feedback", [])
+    has_human_response = isinstance(feedback, list) and any(
+        str(item).startswith("HUMAN_INPUT:") for item in feedback
+    )
     sys.stdout.write(
         json.dumps(_response_for(stage, role, goal, has_human_response), sort_keys=True)
     )
