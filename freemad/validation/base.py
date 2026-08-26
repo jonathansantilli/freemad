@@ -17,5 +17,4 @@ class ValidationResult:
 class Validator(Protocol):
     name: ValidatorName
 
-    def validate(self, answer_id: str, text: str) -> ValidationResult:
-        ...
+    def validate(self, answer_id: str, text: str) -> ValidationResult: ...

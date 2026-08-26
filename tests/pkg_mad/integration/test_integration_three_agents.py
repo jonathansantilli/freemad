@@ -11,31 +11,61 @@ from freemad import compute_answer_id
 class A1Keep(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         s = "ANS_A"
-        return AgentResponse(self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "r", compute_answer_id(own_response), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "r",
+            compute_answer_id(own_response),
+            Metadata(),
+        )
 
 
 class A2AdoptA1(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         s = "ANS_B"
-        return AgentResponse(self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
         # adopt first peer
         new = peer_responses[0] if peer_responses else own_response
         changed = new != own_response
-        return CritiqueResponse(self.agent_cfg.id, Decision.REVISE if changed else Decision.KEEP, changed, new, "r", compute_answer_id(new), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.REVISE if changed else Decision.KEEP,
+            changed,
+            new,
+            "r",
+            compute_answer_id(new),
+            Metadata(),
+        )
 
 
 class A3Keep(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         s = "ANS_C"
-        return AgentResponse(self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "r", compute_answer_id(own_response), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "r",
+            compute_answer_id(own_response),
+            Metadata(),
+        )
 
 
 class TestThreeAgentsIntegration(unittest.TestCase):
@@ -46,14 +76,16 @@ class TestThreeAgentsIntegration(unittest.TestCase):
         register_agent("a3_keep", A3Keep)
 
     def test_three_agents_scores_and_transcript(self):
-        cfg = load_config(overrides={
-            "agents": [
-                {"id": "a1", "type": "a1_keep"},
-                {"id": "a2", "type": "a2_adopt"},
-                {"id": "a3", "type": "a3_keep"}
-            ],
-            "topology": {"type": "all_to_all"}
-        })
+        cfg = load_config(
+            overrides={
+                "agents": [
+                    {"id": "a1", "type": "a1_keep"},
+                    {"id": "a2", "type": "a2_adopt"},
+                    {"id": "a3", "type": "a3_keep"},
+                ],
+                "topology": {"type": "all_to_all"},
+            }
+        )
         orch = Orchestrator(cfg)
         out = orch.run("task", max_rounds=1)
         # Transcript round count

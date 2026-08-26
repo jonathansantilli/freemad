@@ -7,6 +7,7 @@ from typing import Dict
 @dataclass(frozen=True)
 class TopologyInfo:
     type: str
+
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
 
@@ -33,4 +34,3 @@ class RingInfo(TopologyInfo):
 class StarInfo(TopologyInfo):
     hub: str = ""
     type: str = "star"
-

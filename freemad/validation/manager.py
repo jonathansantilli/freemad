@@ -16,13 +16,18 @@ class ValidationManager:
         if validators is None:
             validators = [
                 SyntaxValidator(),
-                SandboxValidator(enabled=cfg.validation.enable_sandbox, timeout_ms=cfg.validation.sandbox_timeout_ms),
+                SandboxValidator(
+                    enabled=cfg.validation.enable_sandbox,
+                    timeout_ms=cfg.validation.sandbox_timeout_ms,
+                ),
                 SecurityValidator(cfg.security),
                 CoverageValidator(),
             ]
         self.validators: List[Validator] = list(validators)
 
-    def validate_many(self, answers: Dict[str, str]) -> Tuple[Dict[str, Dict[str, ValidationResult]], Dict[str, float]]:
+    def validate_many(
+        self, answers: Dict[str, str]
+    ) -> Tuple[Dict[str, Dict[str, ValidationResult]], Dict[str, float]]:
         """Validate answers; returns (results per validator, mean confidence per answer)."""
         per_answer: Dict[str, Dict[str, ValidationResult]] = {}
         confidence: Dict[str, float] = {}

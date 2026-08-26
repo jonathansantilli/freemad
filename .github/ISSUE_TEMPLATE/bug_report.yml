@@ -43,4 +43,3 @@ body:
     attributes:
       label: Logs (redact secrets)
       render: shell
-

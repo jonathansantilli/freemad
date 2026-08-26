@@ -42,7 +42,11 @@ def get_logger(cfg: Config) -> logging.Logger:
         fh = logging.FileHandler(cfg.logging.file)
         fh.setLevel(level)
         fh.addFilter(flt)
-        fh.setFormatter(_JsonFormatter() if cfg.logging.structured else logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        fh.setFormatter(
+            _JsonFormatter()
+            if cfg.logging.structured
+            else logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        )
         logger.addHandler(fh)
     return logger
 
@@ -57,7 +61,9 @@ class _JsonFormatter(logging.Formatter):  # pragma: no cover minimal
         return json.dumps(obj)
 
 
-def log_event(logger: logging.Logger, event: LogEvent, level: int = logging.INFO, **fields: Any) -> None:
+def log_event(
+    logger: logging.Logger, event: LogEvent, level: int = logging.INFO, **fields: Any
+) -> None:
     if any(isinstance(h.formatter, _JsonFormatter) for h in logger.handlers):
         msg = json.dumps({"event": event.value, **fields})
     else:

@@ -66,6 +66,8 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
   with no credentials and is covered by a `SMOKE=1` test
 - Repository links use the canonical `jonathansantilli/freemad` name. GitHub Discussions are
   not enabled, so questions go through a new *Question* issue template
+- The whole repository is formatted with ruff-format and passes `pre-commit run --all-files`;
+  build output and vendored assets are excluded from the hooks
 
 ### Fixed
 - README audited against the code: dead design-doc links removed, the evolve runtime

@@ -26,5 +26,9 @@ class SecurityValidator:
             if rp.search(text or ""):
                 hits.append(rp.pattern)
         if hits:
-            return ValidationResult(passed=False, confidence=0.3, warnings=[f"secret-like content matched: {len(hits)} pattern(s)"])
+            return ValidationResult(
+                passed=False,
+                confidence=0.3,
+                warnings=[f"secret-like content matched: {len(hits)} pattern(s)"],
+            )
         return ValidationResult(passed=True, confidence=0.8)

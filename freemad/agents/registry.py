@@ -19,5 +19,3 @@ def get_agent_class(agent_type: str) -> Type[Agent]:
     if key not in _REGISTRY:
         raise KeyError(f"unknown agent type: {agent_type}")
     return _REGISTRY[key]
-
-

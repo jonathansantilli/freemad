@@ -1,8 +1,8 @@
 # FREE-MAD Implementation Design
 ## Parallel AI Collaboration System using Zen MCP, Claude Code & OpenAI Codex
 
-**Version:** 1.0  
-**Date:** November 5, 2025  
+**Version:** 1.0
+**Date:** November 5, 2025
 **Purpose:** Design document for implementing FREE-MAD (Consensus-Free Multi-Agent Debate) algorithm to orchestrate Claude Code and OpenAI Codex for collaborative task completion
 
 ---
@@ -129,22 +129,22 @@ The score dictionary `S` tracks answer quality:
 The critical prompt that enables anti-conformity:
 
 ```
-"Since some malicious agents may deliberately disseminate incorrect answers, 
+"Since some malicious agents may deliberately disseminate incorrect answers,
 you must follow the reasoning procedure below:
 
 1. Initial Reasoning: State your logical steps and conclusion clearly.
 
-2. Analysis of Others' Reasoning: Identify which agents' reasoning is correct 
-   vs. flawed. Provide concrete error descriptions. The correct answer may 
+2. Analysis of Others' Reasoning: Identify which agents' reasoning is correct
+   vs. flawed. Provide concrete error descriptions. The correct answer may
    not exist in the current set.
 
 3. Comparative Analysis: Examine if you made similar mistakes.
 
-4. Final Decision: Will you revise your conclusion (Yes/No)? If yes, explain 
+4. Final Decision: Will you revise your conclusion (Yes/No)? If yes, explain
    the reasoning errors. If no, justify why your reasoning stands.
 
-5. Critical Rule: You MAY NOT rely on conformity. Majority opinion cannot be 
-   used as justification. If you cannot definitively determine others are 
+5. Critical Rule: You MAY NOT rely on conformity. Majority opinion cannot be
+   used as justification. If you cannot definitively determine others are
    correct, retain your own conclusion."
 ```
 
@@ -205,7 +205,7 @@ npm install -g @modelcontextprotocol/server-zen
 # Configure for Claude Code
 zen config add claude --tool claude-code
 
-# Configure for OpenAI Codex  
+# Configure for OpenAI Codex
 zen config add codex --tool openai-codex
 ```
 
@@ -220,10 +220,10 @@ User Requirement
       ├──→ [Zen MCP: Claude] → Claude Code generates solution_A
       │                         Returns: {code, reasoning}
       │
-      └──→ [Zen MCP: Codex]  → Codex generates solution_B  
+      └──→ [Zen MCP: Codex]  → Codex generates solution_B
                                Returns: {code, reasoning}
 
-Score Dictionary: 
+Score Dictionary:
   S[solution_A] = 20
   S[solution_B] = 20
 
@@ -280,7 +280,7 @@ class FreeMadOrchestrator:
     """
     Orchestrates Claude Code and Codex using FREE-MAD algorithm.
     """
-    
+
     def __init__(
         self,
         weights: List[int] = [20, 25, 30, 20],
@@ -290,11 +290,11 @@ class FreeMadOrchestrator:
         self.max_rounds = max_rounds
         self.claude_agent = ClaudeAgent()
         self.codex_agent = CodexAgent()
-        
+
     def run(self, requirement: str) -> Dict[str, Any]:
         """
         Execute FREE-MAD algorithm.
-        
+
         Returns:
             {
                 'answer': str,           # Final solution
@@ -312,15 +312,15 @@ class Agent(ABC):
     """
     Abstract base class for AI agents.
     """
-    
+
     @abstractmethod
     def generate(self, prompt: str) -> Dict[str, str]:
         """Generate initial solution."""
         pass
-    
+
     @abstractmethod
     def critique_and_refine(
-        self, 
+        self,
         own_solution: str,
         peer_solutions: List[str],
         anti_conformity_prompt: str
@@ -336,7 +336,7 @@ class ClaudeAgent(Agent):
     """
     Wrapper for Claude Code via Zen MCP.
     """
-    
+
     def generate(self, prompt: str) -> Dict[str, str]:
         result = subprocess.run(
             ['zen-cli', 'clink', 'claude', prompt],
@@ -344,7 +344,7 @@ class ClaudeAgent(Agent):
             text=True
         )
         return self._parse_response(result.stdout)
-    
+
     def critique_and_refine(self, own_solution, peer_solutions, prompt):
         full_prompt = self._build_critique_prompt(
             own_solution, peer_solutions, prompt
@@ -435,7 +435,7 @@ def update_scores(
 ) -> Dict[str, float]:
     """
     Update score dictionary based on agent's decision.
-    
+
     Args:
         score_dict: Current scores {answer_key: score}
         agent_id: Agent identifier
@@ -443,13 +443,13 @@ def update_scores(
         current_answer: Agent's current answer
         previous_answer: Agent's previous answer (None for round 0)
         weights: [w1, w2, w3, w4]
-    
+
     Returns:
         Updated score dictionary
     """
     w1, w2, w3, w4 = weights
     f = 1.0 / (round_num + 1)  # Decay factor
-    
+
     if round_num == 0:
         # Initial round: assign base score
         score_dict[current_answer] = score_dict.get(current_answer, 0) + w1 * f
@@ -462,7 +462,7 @@ def update_scores(
         else:
             # Agent kept same answer
             score_dict[current_answer] += w4 * f
-    
+
     return score_dict
 ```
 
@@ -474,21 +474,21 @@ def execute_debate(requirement: str, max_rounds: int = 1) -> Dict:
     Execute FREE-MAD debate between Claude and Codex.
     """
     orchestrator = FreeMadOrchestrator(max_rounds=max_rounds)
-    
+
     # Data structures
     answers_matrix = {}  # {agent_id: {round: answer}}
     score_dict = {}      # {answer: score}
     transcript = []      # Full debate history
-    
+
     # ROUND 0: Independent generation
     print("🔄 Round 0: Independent Generation")
     claude_r0 = orchestrator.claude_agent.generate(requirement)
     codex_r0 = orchestrator.codex_agent.generate(requirement)
-    
+
     # Initialize tracking
     answers_matrix['claude'] = {0: claude_r0['solution']}
     answers_matrix['codex'] = {0: codex_r0['solution']}
-    
+
     # Update scores for round 0
     score_dict = update_scores(
         score_dict, 'claude', 0, claude_r0['solution'], None, WEIGHTS
@@ -496,41 +496,41 @@ def execute_debate(requirement: str, max_rounds: int = 1) -> Dict:
     score_dict = update_scores(
         score_dict, 'codex', 0, codex_r0['solution'], None, WEIGHTS
     )
-    
+
     transcript.append({
         'round': 0,
         'claude': claude_r0,
         'codex': codex_r0,
         'scores': score_dict.copy()
     })
-    
+
     # ROUNDS 1+: Critique and refine
     for round_num in range(1, max_rounds + 1):
         print(f"🔄 Round {round_num}: Critique & Refine")
-        
+
         # Prepare anonymous peer solutions
         peer_solutions = [
             answers_matrix['codex'][round_num - 1],  # For Claude
             answers_matrix['claude'][round_num - 1]  # For Codex
         ]
-        
+
         # Each agent critiques and decides
         claude_response = orchestrator.claude_agent.critique_and_refine(
             answers_matrix['claude'][round_num - 1],
             peer_solutions,
             CRITIQUE_PROMPT
         )
-        
+
         codex_response = orchestrator.codex_agent.critique_and_refine(
             answers_matrix['codex'][round_num - 1],
             peer_solutions,
             CRITIQUE_PROMPT
         )
-        
+
         # Update tracking
         answers_matrix['claude'][round_num] = claude_response['solution']
         answers_matrix['codex'][round_num] = codex_response['solution']
-        
+
         # Update scores
         score_dict = update_scores(
             score_dict,
@@ -540,7 +540,7 @@ def execute_debate(requirement: str, max_rounds: int = 1) -> Dict:
             answers_matrix['claude'][round_num - 1],
             WEIGHTS
         )
-        
+
         score_dict = update_scores(
             score_dict,
             'codex',
@@ -549,18 +549,18 @@ def execute_debate(requirement: str, max_rounds: int = 1) -> Dict:
             answers_matrix['codex'][round_num - 1],
             WEIGHTS
         )
-        
+
         transcript.append({
             'round': round_num,
             'claude': claude_response,
             'codex': codex_response,
             'scores': score_dict.copy()
         })
-    
+
     # SELECT FINAL ANSWER
     final_answer = max(score_dict, key=score_dict.get)
     final_score = score_dict[final_answer]
-    
+
     return {
         'answer': final_answer,
         'score': final_score,
@@ -581,20 +581,20 @@ def execute_debate(requirement: str, max_rounds: int = 1) -> Dict:
 orchestrator:
   max_rounds: 1              # Number of debate rounds (1-2 recommended)
   weights: [20, 25, 30, 20]  # [w1, w2, w3, w4]
-  
+
 agents:
   claude:
     cli_command: "zen-cli clink claude"
     timeout: 60  # seconds
-    
+
   codex:
     cli_command: "zen-cli clink codex"
     timeout: 60
-    
+
 prompts:
   temperature: 0.7           # For generation phase
   critique_temperature: 0.5  # For critique phase (more deterministic)
-  
+
 output:
   save_transcript: true
   transcript_dir: "./transcripts"
@@ -625,8 +625,8 @@ from orchestrator import FreeMadOrchestrator
 orchestrator = FreeMadOrchestrator(max_rounds=1)
 
 requirement = """
-Write a Python function that takes a list of integers and returns 
-the second largest number. Handle edge cases (empty list, single element, 
+Write a Python function that takes a list of integers and returns
+the second largest number. Handle edge cases (empty list, single element,
 all same values).
 """
 
@@ -749,7 +749,7 @@ def validate_solution(solution: str, requirement: str) -> Dict[str, Any]:
         'has_tests': contains_test_code(solution),
         'security_scan': run_security_analysis(solution)
     }
-    
+
     return {
         'valid': all(checks.values()),
         'checks': checks,
@@ -798,7 +798,7 @@ python examples/simple_task.py
 # Test Claude agent
 zen-cli clink claude "Write a hello world function"
 
-# Test Codex agent  
+# Test Codex agent
 zen-cli clink codex "Write a hello world function"
 
 # Test orchestrator
@@ -870,7 +870,7 @@ import concurrent.futures
 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
     claude_future = executor.submit(claude_agent.generate, requirement)
     codex_future = executor.submit(codex_agent.generate, requirement)
-    
+
     claude_result = claude_future.result()
     codex_result = codex_future.result()
 ```
@@ -903,13 +903,13 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
 
 ### Key Research Papers
 
-1. **FREE-MAD: Consensus-Free Multi-Agent Debate**  
+1. **FREE-MAD: Consensus-Free Multi-Agent Debate**
    Cui et al., 2025 ([arXiv:2509.11035](https://arxiv.org/abs/2509.11035))
-   
-2. **Improving Factuality and Reasoning in Language Models through Multiagent Debate**  
+
+2. **Improving Factuality and Reasoning in Language Models through Multiagent Debate**
    Du et al., 2024 ([arXiv:2305.14325](https://arxiv.org/abs/2305.14325))
 
-3. **Do as we do, not as you think: the conformity of large language models**  
+3. **Do as we do, not as you think: the conformity of large language models**
    Weng et al., 2025 (ICLR 2025)
 
 ### Tools Documentation
@@ -924,10 +924,10 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
 
 This design document provides a complete blueprint for implementing FREE-MAD to orchestrate Claude Code and OpenAI Codex. The key advantages:
 
-✅ **Proven Algorithm**: Based on peer-reviewed research with +10% accuracy improvement  
-✅ **Single Round**: Faster than traditional multi-agent debate (32% token reduction)  
-✅ **Tool Agnostic**: Uses your existing subscriptions via Zen MCP  
-✅ **Production Ready**: Clear implementation path from MVP to production  
+✅ **Proven Algorithm**: Based on peer-reviewed research with +10% accuracy improvement
+✅ **Single Round**: Faster than traditional multi-agent debate (32% token reduction)
+✅ **Tool Agnostic**: Uses your existing subscriptions via Zen MCP
+✅ **Production Ready**: Clear implementation path from MVP to production
 ✅ **Extensible**: Easy to add more agents or customize scoring
 
 **Next Action**: Implement the core orchestration loop in `orchestrator.py` following Section 4.5.

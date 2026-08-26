@@ -27,14 +27,29 @@ from freemad import (
 
 class _PolicyMockAgent(Agent):
     def generate(self, requirement: str) -> AgentResponse:
-        return AgentResponse(self.agent_cfg.id, "solution", "reasoning", "answer", Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, "solution", "reasoning", "answer", Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "keep", "answer", Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "keep",
+            "answer",
+            Metadata(),
+        )
 
     def act(self, request: TaskRequest) -> TaskResponse:
         if request.role == TaskRole.RESEARCHER:
-            return TaskResponse(agent_id=self.agent_cfg.id, stage=request.stage, role=request.role, content="Research")
+            return TaskResponse(
+                agent_id=self.agent_cfg.id,
+                stage=request.stage,
+                role=request.role,
+                content="Research",
+            )
         if request.role == TaskRole.REVIEWER and request.stage == TaskStage.RESEARCH:
             return TaskResponse(
                 agent_id=self.agent_cfg.id,
@@ -112,7 +127,11 @@ def _build_cfg(tmp_path: Path) -> Config:
                 {"id": "researcher-a", "type": "policy_mock", "roles": ["researcher"]},
                 {"id": "planner-a", "type": "policy_mock", "roles": ["planner"]},
                 {"id": "reviewer-a", "type": "policy_mock", "roles": ["reviewer"]},
-                {"id": "implementer-a", "type": "policy_mock", "roles": ["implementer"]},
+                {
+                    "id": "implementer-a",
+                    "type": "policy_mock",
+                    "roles": ["implementer"],
+                },
                 {"id": "verifier-a", "type": "policy_mock", "roles": ["verifier"]},
             ],
             "task": {

@@ -22,6 +22,5 @@ def build_task_prompt(request: TaskRequest) -> str:
         "- artifact_ids: [string]\n"
         "- work_items: [{work_item_id,task_id,title,description,status,...}]\n\n"
         "- sources: [{title,url,summary}]\n\n"
-        "Task request JSON:\n"
-        + payload
+        "Task request JSON:\n" + payload
     )

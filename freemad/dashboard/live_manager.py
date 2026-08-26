@@ -92,7 +92,9 @@ class LiveRunManager:
 
         t = threading.Thread(target=_worker, name=f"freemad-run-{run_id}", daemon=True)
         with self._lock:
-            self._runs[run_id] = LiveRunState(info=LiveRunInfo(run_id=run_id, completed=False), queue=q)
+            self._runs[run_id] = LiveRunState(
+                info=LiveRunInfo(run_id=run_id, completed=False), queue=q
+            )
         t.start()
         return run_id
 

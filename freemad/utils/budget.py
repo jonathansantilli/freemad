@@ -8,7 +8,9 @@ class BudgetExceeded(RuntimeError):
 
 
 class BudgetGuard:
-    def __init__(self, max_total_time_sec: float | None, max_round_time_sec: float | None) -> None:
+    def __init__(
+        self, max_total_time_sec: float | None, max_round_time_sec: float | None
+    ) -> None:
         self.max_total_time_sec = max_total_time_sec
         self.max_round_time_sec = max_round_time_sec
         self._start = time.perf_counter()
@@ -17,7 +19,9 @@ class BudgetGuard:
         if self.max_total_time_sec is None:
             return
         if time.perf_counter() - self._start > self.max_total_time_sec:
-            raise BudgetExceeded(f"max_total_time_sec exceeded: {self.max_total_time_sec}")
+            raise BudgetExceeded(
+                f"max_total_time_sec exceeded: {self.max_total_time_sec}"
+            )
 
     def round_start(self) -> float:
         return time.perf_counter()
@@ -65,5 +69,9 @@ class TokenBudget:
         if n <= 0:
             return
         self.used += n
-        if self.enforce and self.max_total_tokens is not None and self.used > self.max_total_tokens:
+        if (
+            self.enforce
+            and self.max_total_tokens is not None
+            and self.used > self.max_total_tokens
+        ):
             raise BudgetExceeded("max_total_tokens exceeded")

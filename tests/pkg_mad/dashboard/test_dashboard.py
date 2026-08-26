@@ -17,17 +17,67 @@ def _write_sample(tmp: Path) -> Path:
         "winning_agents": ["a"],
         "validator_confidence": {"abc123": 0.8, "def456": 0.7},
         "transcript": [
-            {"round": 0, "type": "generation", "agents": {
-                "a": {"response": {"solution": "print('ok')", "reasoning": "initial reasoning", "decision": "KEEP", "changed": False, "answer_id": "abc123", "metadata": {}},
-                       "peers_assigned": [], "peers_assigned_count": 0, "peers_seen": [], "peers_seen_count": 0}
-            }, "scores": {"abc123": 20.0}, "topology_info": {"type": "all_to_all"}, "deadline_hit_soft": False, "deadline_hit_hard": False},
-            {"round": 1, "type": "critique", "agents": {
-                "a": {"response": {"solution": "print('ok')", "reasoning": "kept reasoning", "decision": "KEEP", "changed": False, "answer_id": "abc123", "metadata": {}},
-                       "peers_assigned": [], "peers_assigned_count": 0, "peers_seen": [], "peers_seen_count": 0}
-            }, "scores": {"abc123": 42.0}, "topology_info": {"type": "all_to_all"}, "deadline_hit_soft": False, "deadline_hit_hard": False},
+            {
+                "round": 0,
+                "type": "generation",
+                "agents": {
+                    "a": {
+                        "response": {
+                            "solution": "print('ok')",
+                            "reasoning": "initial reasoning",
+                            "decision": "KEEP",
+                            "changed": False,
+                            "answer_id": "abc123",
+                            "metadata": {},
+                        },
+                        "peers_assigned": [],
+                        "peers_assigned_count": 0,
+                        "peers_seen": [],
+                        "peers_seen_count": 0,
+                    }
+                },
+                "scores": {"abc123": 20.0},
+                "topology_info": {"type": "all_to_all"},
+                "deadline_hit_soft": False,
+                "deadline_hit_hard": False,
+            },
+            {
+                "round": 1,
+                "type": "critique",
+                "agents": {
+                    "a": {
+                        "response": {
+                            "solution": "print('ok')",
+                            "reasoning": "kept reasoning",
+                            "decision": "KEEP",
+                            "changed": False,
+                            "answer_id": "abc123",
+                            "metadata": {},
+                        },
+                        "peers_assigned": [],
+                        "peers_assigned_count": 0,
+                        "peers_seen": [],
+                        "peers_seen_count": 0,
+                    }
+                },
+                "scores": {"abc123": 42.0},
+                "topology_info": {"type": "all_to_all"},
+                "deadline_hit_soft": False,
+                "deadline_hit_hard": False,
+            },
         ],
         "metrics": {"agreement_rate": 0.5},
-        "score_explainers": {"abc123": [{"round":0, "agent_id":"a", "action":"initial", "deltas": {"abc123": 20.0}, "contributors": {"abc123":1}}]},
+        "score_explainers": {
+            "abc123": [
+                {
+                    "round": 0,
+                    "agent_id": "a",
+                    "action": "initial",
+                    "deltas": {"abc123": 20.0},
+                    "contributors": {"abc123": 1},
+                }
+            ]
+        },
     }
     p.write_text(json.dumps(obj), encoding="utf-8")
     return p

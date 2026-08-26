@@ -3,7 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from freemad.types import ArtifactKind, ReviewDecision, TaskEventKind, TaskRole, TaskStage, TaskStatus
+from freemad.types import (
+    ArtifactKind,
+    ReviewDecision,
+    TaskEventKind,
+    TaskRole,
+    TaskStage,
+    TaskStatus,
+)
 
 
 @dataclass(frozen=True)

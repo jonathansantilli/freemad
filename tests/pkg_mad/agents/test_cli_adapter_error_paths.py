@@ -102,8 +102,12 @@ def test_cli_retry_succeeds_on_second_attempt(monkeypatch):
 
     outputs: Iterator[Any] = iter(
         [
-            SimpleNamespace(stdout="SOLUTION:\n\nREASONING:\n", stderr="", returncode=0),
-            SimpleNamespace(stdout="SOLUTION:\nsecond\n\nREASONING:\nworks", stderr="", returncode=0),
+            SimpleNamespace(
+                stdout="SOLUTION:\n\nREASONING:\n", stderr="", returncode=0
+            ),
+            SimpleNamespace(
+                stdout="SOLUTION:\nsecond\n\nREASONING:\nworks", stderr="", returncode=0
+            ),
         ]
     )
 

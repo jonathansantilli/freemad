@@ -14,4 +14,3 @@ class Topology(abc.ABC):
     def info(self) -> dict:
         """Return topology metadata for transcripts/logging."""
         ...
-

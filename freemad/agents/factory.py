@@ -25,4 +25,3 @@ class AgentFactory:
         if not agents:
             raise ConfigError("no enabled agents configured")
         return agents
-

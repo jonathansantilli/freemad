@@ -11,19 +11,39 @@ from freemad import compute_answer_id
 class StaticA(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         s = "ANS_X"
-        return AgentResponse(self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, __import__('freemad.types').types.Decision.KEEP, False, own_response, "r", compute_answer_id(own_response), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            __import__("freemad.types").types.Decision.KEEP,
+            False,
+            own_response,
+            "r",
+            compute_answer_id(own_response),
+            Metadata(),
+        )
 
 
 class StaticB(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         s = "ANS_Y"
-        return AgentResponse(self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, s, "r", compute_answer_id(s), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, __import__('freemad.types').types.Decision.KEEP, False, own_response, "r", compute_answer_id(own_response), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            __import__("freemad.types").types.Decision.KEEP,
+            False,
+            own_response,
+            "r",
+            compute_answer_id(own_response),
+            Metadata(),
+        )
 
 
 class TestTieBreakRandom(unittest.TestCase):
@@ -34,13 +54,15 @@ class TestTieBreakRandom(unittest.TestCase):
 
     def test_random_tiebreak(self):
         seed = 424242
-        cfg = load_config(overrides={
-            "agents": [
-                {"id": "a", "type": "static_a"},
-                {"id": "b", "type": "static_b"},
-            ],
-            "scoring": {"tie_break": "random", "random_seed": seed},
-        })
+        cfg = load_config(
+            overrides={
+                "agents": [
+                    {"id": "a", "type": "static_a"},
+                    {"id": "b", "type": "static_b"},
+                ],
+                "scoring": {"tie_break": "random", "random_seed": seed},
+            }
+        )
         o = Orchestrator(cfg)
         out = o.run("task", max_rounds=1)
         # Compute expected by simulating the same random choice over sorted ids

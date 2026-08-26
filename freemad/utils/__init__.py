@@ -14,5 +14,5 @@ __all__ = [
     "ParseResultGen",
     "ParseResultCrit",
     "canonicalize_solution",
-    "compute_answer_id"
+    "compute_answer_id",
 ]

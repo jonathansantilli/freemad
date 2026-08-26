@@ -39,7 +39,9 @@ def build_generation_prompt(requirement: str) -> str:
     )
 
 
-def build_critique_prompt(requirement: str, own_solution: str, peer_solutions: Iterable[str]) -> str:
+def build_critique_prompt(
+    requirement: str, own_solution: str, peer_solutions: Iterable[str]
+) -> str:
     """Self-descriptive prompt for critique (anti-conformity, general tasks).
 
     Agent task:
@@ -56,7 +58,11 @@ def build_critique_prompt(requirement: str, own_solution: str, peer_solutions: I
     - No extra sections beyond DECISION, (optional) REVISED_SOLUTION, and REASONING.
     """
     peers = list(peer_solutions)
-    peer_blob = "\n\n".join(f"Peer #{i+1}:\n{p}" for i, p in enumerate(peers)) if peers else "(no peers)"
+    peer_blob = (
+        "\n\n".join(f"Peer #{i+1}:\n{p}" for i, p in enumerate(peers))
+        if peers
+        else "(no peers)"
+    )
     return (
         "Anti-conformity critique. Analyze peers for flaws and improvements.\n"
         "STRICT OUTPUT FORMAT — follow exactly.\n\n"

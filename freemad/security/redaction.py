@@ -18,4 +18,3 @@ class Redactor:
         for rx in self._regexes:
             s = rx.sub("[REDACTED]", s)
         return s
-

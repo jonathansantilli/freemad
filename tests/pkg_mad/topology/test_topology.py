@@ -14,7 +14,9 @@ class TestTopology(unittest.TestCase):
         self.assertEqual(t.info()["type"], "all_to_all")
 
     def test_k_reviewers_deterministic(self):
-        cfg = load_config(overrides={"topology": {"type": "k_reviewers", "k": 1, "seed": 42}})
+        cfg = load_config(
+            overrides={"topology": {"type": "k_reviewers", "k": 1, "seed": 42}}
+        )
         t1 = build_topology(cfg)
         t2 = build_topology(cfg)
         ids = ["a", "b", "c", "d"]
@@ -36,14 +38,16 @@ class TestTopology(unittest.TestCase):
         self.assertEqual(peers["c"], ["a"])
 
     def test_star(self):
-        cfg = load_config(overrides={
-            "agents": [
-                {"id": "a", "type": "claude_code"},
-                {"id": "b", "type": "openai_codex"},
-                {"id": "c", "type": "openai_codex"},
-            ],
-            "topology": {"type": "star", "hub_agent": "a"},
-        })
+        cfg = load_config(
+            overrides={
+                "agents": [
+                    {"id": "a", "type": "claude_code"},
+                    {"id": "b", "type": "openai_codex"},
+                    {"id": "c", "type": "openai_codex"},
+                ],
+                "topology": {"type": "star", "hub_agent": "a"},
+            }
+        )
         t = build_topology(cfg)
         ids = ["a", "b", "c"]
         peers = t.assign_peers(ids)

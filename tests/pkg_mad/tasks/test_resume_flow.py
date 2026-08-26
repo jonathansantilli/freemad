@@ -28,10 +28,20 @@ from tests.pkg_mad.tasks.test_orchestrator import _QuorumMockAgent
 
 class _HumanFeedbackMockAgent(Agent):
     def generate(self, requirement: str) -> AgentResponse:
-        return AgentResponse(self.agent_cfg.id, "solution", "reasoning", "answer", Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, "solution", "reasoning", "answer", Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "keep", "answer", Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "keep",
+            "answer",
+            Metadata(),
+        )
 
     def act(self, request: TaskRequest) -> TaskResponse:
         if request.role == TaskRole.RESEARCHER:
@@ -65,7 +75,10 @@ class _HumanFeedbackMockAgent(Agent):
             )
         if request.role == TaskRole.REVIEWER and request.stage == TaskStage.PLAN_REVIEW:
             feedback = " ".join(request.feedback).lower()
-            if "human_input: use sqlite." in feedback and "human_approval: plan_review" in feedback:
+            if (
+                "human_input: use sqlite." in feedback
+                and "human_approval: plan_review" in feedback
+            ):
                 return TaskResponse(
                     agent_id=self.agent_cfg.id,
                     stage=request.stage,
@@ -101,7 +114,11 @@ def test_task_restart_and_resume_rebuilds_same_waiting_state(tmp_path: Path) -> 
                 {"id": "researcher-a", "type": "quorum_mock", "roles": ["researcher"]},
                 {"id": "planner-a", "type": "quorum_mock", "roles": ["planner"]},
                 {"id": "reviewer-a", "type": "quorum_mock", "roles": ["reviewer"]},
-                {"id": "implementer-a", "type": "quorum_mock", "roles": ["implementer"]},
+                {
+                    "id": "implementer-a",
+                    "type": "quorum_mock",
+                    "roles": ["implementer"],
+                },
                 {"id": "verifier-a", "type": "quorum_mock", "roles": ["verifier"]},
                 {"id": "arbiter-a", "type": "quorum_mock", "roles": ["arbiter"]},
             ],
@@ -138,7 +155,9 @@ def test_task_restart_and_resume_rebuilds_same_waiting_state(tmp_path: Path) -> 
     assert rebuilt is not None
     assert rebuilt.status == TaskStatus.WAITING_FOR_HUMAN
     assert rebuilt.current_stage == TaskStage.PLAN_REVIEW
-    assert len(orch_reopened.store.list_events(task.task_id)) == len(orch.store.list_events(task.task_id))
+    assert len(orch_reopened.store.list_events(task.task_id)) == len(
+        orch.store.list_events(task.task_id)
+    )
 
     orch_reopened.store.update_task(replace(rebuilt, status=TaskStatus.RUNNING))
     resumed = orch_reopened.run(task.task_id)
@@ -147,15 +166,33 @@ def test_task_restart_and_resume_rebuilds_same_waiting_state(tmp_path: Path) -> 
     assert resumed.current_stage == TaskStage.PLAN_REVIEW
 
 
-def test_task_resume_injects_human_input_and_approval_into_feedback(tmp_path: Path) -> None:
+def test_task_resume_injects_human_input_and_approval_into_feedback(
+    tmp_path: Path,
+) -> None:
     register_agent("human_feedback_mock", _HumanFeedbackMockAgent)
     cfg = load_config(
         overrides={
             "agents": [
-                {"id": "researcher-a", "type": "human_feedback_mock", "roles": ["researcher"]},
-                {"id": "planner-a", "type": "human_feedback_mock", "roles": ["planner"]},
-                {"id": "reviewer-a", "type": "human_feedback_mock", "roles": ["reviewer"]},
-                {"id": "arbiter-a", "type": "human_feedback_mock", "roles": ["arbiter"]},
+                {
+                    "id": "researcher-a",
+                    "type": "human_feedback_mock",
+                    "roles": ["researcher"],
+                },
+                {
+                    "id": "planner-a",
+                    "type": "human_feedback_mock",
+                    "roles": ["planner"],
+                },
+                {
+                    "id": "reviewer-a",
+                    "type": "human_feedback_mock",
+                    "roles": ["reviewer"],
+                },
+                {
+                    "id": "arbiter-a",
+                    "type": "human_feedback_mock",
+                    "roles": ["arbiter"],
+                },
             ],
             "task": {
                 "store_path": str(tmp_path / "tasks-feedback.db"),

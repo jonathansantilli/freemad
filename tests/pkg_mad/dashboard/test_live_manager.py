@@ -43,8 +43,16 @@ class TestLiveRunManager(unittest.TestCase):
                     {"id": "a1", "type": "live_keep"},
                     {"id": "a2", "type": "live_keep"},
                 ],
-                "deadlines": {"soft_timeout_ms": 50, "hard_timeout_ms": 100, "min_agents": 2},
-                "budget": {"max_total_time_sec": 10, "max_round_time_sec": 2, "max_agent_time_sec": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 50,
+                    "hard_timeout_ms": 100,
+                    "min_agents": 2,
+                },
+                "budget": {
+                    "max_total_time_sec": 10,
+                    "max_round_time_sec": 2,
+                    "max_agent_time_sec": 2,
+                },
             }
         )
         mgr = LiveRunManager()
@@ -62,16 +70,27 @@ class TestLiveRunManager(unittest.TestCase):
                     break
                 continue
             kinds.append(ev.kind)
-            if ev.kind in (RunEventKind.RUN_COMPLETED, RunEventKind.RUN_FAILED, RunEventKind.RUN_BUDGET_EXCEEDED):
+            if ev.kind in (
+                RunEventKind.RUN_COMPLETED,
+                RunEventKind.RUN_FAILED,
+                RunEventKind.RUN_BUDGET_EXCEEDED,
+            ):
                 break
 
         self.assertIn(RunEventKind.RUN_STARTED, kinds)
         self.assertTrue(
-            any(k in (RunEventKind.RUN_COMPLETED, RunEventKind.RUN_FAILED, RunEventKind.RUN_BUDGET_EXCEEDED) for k in kinds)
+            any(
+                k
+                in (
+                    RunEventKind.RUN_COMPLETED,
+                    RunEventKind.RUN_FAILED,
+                    RunEventKind.RUN_BUDGET_EXCEEDED,
+                )
+                for k in kinds
+            )
         )
         self.assertTrue(mgr.is_completed(run_id))
 
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
-

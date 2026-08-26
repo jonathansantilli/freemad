@@ -27,4 +27,3 @@ def compute_answer_id(solution: str) -> str:
     canon = canonicalize_solution(solution)
     h = hashlib.sha256(canon.encode("utf-8")).hexdigest()
     return h[:16]
-

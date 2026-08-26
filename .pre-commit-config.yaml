@@ -1,3 +1,7 @@
+# Build output and vendored assets are not ours to reformat: `make ui-build` regenerates
+# static_app, and the vendor files are upstream releases.
+exclude: ^freemad/dashboard/(static_app|static/vendor)/
+
 repos:
   # ruff-format is the single formatter. Running black alongside it ping-ponged: black
   # reflows a long `except X as e:  # comment` into a parenthesised form, ruff-format

@@ -43,4 +43,3 @@ Thanks for your interest in contributing! This document explains how to set up a
 - See GOVERNANCE.md for decision-making and maintainer roles.
 
 Thank you for helping make FREE‑MAD better!
-

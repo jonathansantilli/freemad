@@ -19,4 +19,3 @@
 
 ## Changes to Governance
 - Propose via PR; approved by maintainers.
-

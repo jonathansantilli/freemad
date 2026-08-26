@@ -14,10 +14,18 @@ def _write_task_config(tmp_path: Path) -> Path:
         json.dumps(
             {
                 "agents": [
-                    {"id": "researcher-a", "type": "quorum_mock", "roles": ["researcher"]},
+                    {
+                        "id": "researcher-a",
+                        "type": "quorum_mock",
+                        "roles": ["researcher"],
+                    },
                     {"id": "planner-a", "type": "quorum_mock", "roles": ["planner"]},
                     {"id": "reviewer-a", "type": "quorum_mock", "roles": ["reviewer"]},
-                    {"id": "implementer-a", "type": "quorum_mock", "roles": ["implementer"]},
+                    {
+                        "id": "implementer-a",
+                        "type": "quorum_mock",
+                        "roles": ["implementer"],
+                    },
                     {"id": "verifier-a", "type": "quorum_mock", "roles": ["verifier"]},
                     {"id": "arbiter-a", "type": "quorum_mock", "roles": ["arbiter"]},
                 ],
@@ -105,13 +113,17 @@ def test_task_answer_approve_pause_and_resume(capsys, tmp_path: Path) -> None:
     assert rc == 0
     answer_payload = json.loads(capsys.readouterr().out)
     assert answer_payload["task_id"] == task_id
-    assert any(event["kind"] == "human_input_received" for event in answer_payload["events"])
+    assert any(
+        event["kind"] == "human_input_received" for event in answer_payload["events"]
+    )
 
     rc = main(["task", "approve", "--config", str(cfg_path), task_id, "plan_review"])
     assert rc == 0
     approve_payload = json.loads(capsys.readouterr().out)
     assert approve_payload["task_id"] == task_id
-    assert any(event["kind"] == "decision_recorded" for event in approve_payload["events"])
+    assert any(
+        event["kind"] == "decision_recorded" for event in approve_payload["events"]
+    )
 
     rc = main(["task", "pause", "--config", str(cfg_path), task_id])
     assert rc == 0

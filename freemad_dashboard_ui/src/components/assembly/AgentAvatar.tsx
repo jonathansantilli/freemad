@@ -126,4 +126,3 @@ export function AgentAvatar({
     </motion.div>
   );
 }
-

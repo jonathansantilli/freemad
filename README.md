@@ -518,7 +518,7 @@ poetry run pre-commit install
 poetry run pre-commit run              # the staged files, which is what the commit gate checks
 ```
 
-`pre-commit run --all-files` also works, but ruff-format will rewrite files that predate it; expect a large, purely mechanical diff and commit it separately.
+`pre-commit run --all-files` is clean on `main`; run it before opening a pull request.
 
 ### Dashboard UI
 

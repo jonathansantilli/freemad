@@ -64,7 +64,10 @@ class TestTaskModels(unittest.TestCase):
                 "title": "Add task config",
                 "description": "Extend config with task settings.",
                 "depends_on": ["w-0"],
-                "write_scope": ["freemad/config.py", "tests/pkg_mad/config/test_config.py"],
+                "write_scope": [
+                    "freemad/config.py",
+                    "tests/pkg_mad/config/test_config.py",
+                ],
                 "verification_scope": ["tests/pkg_mad/config/test_config.py"],
                 "status": "in_review",
                 "author_agent_id": "implementer-a",
@@ -199,14 +202,26 @@ class TestTaskModels(unittest.TestCase):
 
         self.assertEqual(snapshot.to_dict()["task_type"], "code")
         self.assertEqual(snapshot.to_dict()["status"], "running")
-        self.assertEqual(request.to_dict()["allowed_actions"], ["write_file", "run_command"])
+        self.assertEqual(
+            request.to_dict()["allowed_actions"], ["write_file", "run_command"]
+        )
         self.assertEqual(request.to_dict()["work_item"]["status"], "queued")
         self.assertEqual(response.to_dict()["review_decision"], "revise")
-        self.assertEqual(response.to_dict()["commands"], ["pytest -q tests/pkg_mad/config/test_config.py"])
+        self.assertEqual(
+            response.to_dict()["commands"],
+            ["pytest -q tests/pkg_mad/config/test_config.py"],
+        )
 
     def test_task_event_to_dict_serializes_optional_fields(self):
         from freemad.task_events import TaskEvent
-        from freemad.types import ArtifactKind, ReviewDecision, TaskEventKind, TaskRole, TaskStage, TaskStatus
+        from freemad.types import (
+            ArtifactKind,
+            ReviewDecision,
+            TaskEventKind,
+            TaskRole,
+            TaskStage,
+            TaskStatus,
+        )
 
         event = TaskEvent(
             kind=TaskEventKind.REVIEW_RECORDED,

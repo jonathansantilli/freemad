@@ -95,4 +95,3 @@ export function ScoreChart({ history, agents }: ScoreChartProps) {
     </div>
   );
 }
-

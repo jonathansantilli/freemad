@@ -6,9 +6,21 @@ from typing import Any
 import subprocess
 
 from freemad.agents.cli_adapter import CLIAdapter
-from freemad.config import AgentConfig, AgentRuntimeConfig, BudgetConfig, Config, SecurityConfig
+from freemad.config import (
+    AgentConfig,
+    AgentRuntimeConfig,
+    BudgetConfig,
+    Config,
+    SecurityConfig,
+)
 from freemad.tasks.models import TaskRequest, WorkItem
-from freemad.types import ActionKind, ReviewDecision, TaskRole, TaskStage, WorkItemStatus
+from freemad.types import (
+    ActionKind,
+    ReviewDecision,
+    TaskRole,
+    TaskStage,
+    WorkItemStatus,
+)
 
 
 class DummyAdapter(CLIAdapter):
@@ -72,7 +84,14 @@ def test_cli_adapter_act_parses_structured_json(monkeypatch) -> None:
         allowed_actions=(ActionKind.REVIEW,),
     )
 
-    def fake_run(cmd: list[str], input: str, text: bool, capture_output: bool, timeout: float, check: bool) -> Any:  # noqa: A002
+    def fake_run(
+        cmd: list[str],
+        input: str,
+        text: bool,
+        capture_output: bool,
+        timeout: float,
+        check: bool,
+    ) -> Any:  # noqa: A002
         assert cmd[0] == "mycmd"
         assert '"stage": "code_review"' in input
         return SimpleNamespace(
@@ -112,7 +131,14 @@ def test_cli_adapter_act_parses_structured_sources(monkeypatch) -> None:
         allowed_actions=(ActionKind.RESEARCH,),
     )
 
-    def fake_run(cmd: list[str], input: str, text: bool, capture_output: bool, timeout: float, check: bool) -> Any:  # noqa: A002
+    def fake_run(
+        cmd: list[str],
+        input: str,
+        text: bool,
+        capture_output: bool,
+        timeout: float,
+        check: bool,
+    ) -> Any:  # noqa: A002
         assert '"stage": "research"' in input
         return SimpleNamespace(
             stdout=(
@@ -137,10 +163,19 @@ def test_cli_adapter_act_parses_structured_sources(monkeypatch) -> None:
 def test_existing_debate_prompt_contract_remains_unchanged(monkeypatch) -> None:
     adapter = _build_adapter()
 
-    def fake_run(cmd: list[str], input: str, text: bool, capture_output: bool, timeout: float, check: bool) -> Any:  # noqa: A002
+    def fake_run(
+        cmd: list[str],
+        input: str,
+        text: bool,
+        capture_output: bool,
+        timeout: float,
+        check: bool,
+    ) -> Any:  # noqa: A002
         assert "SOLUTION:" in input
         assert "REASONING:" in input
-        return SimpleNamespace(stdout="SOLUTION:\nok\n\nREASONING:\nwhy", stderr="", returncode=0)
+        return SimpleNamespace(
+            stdout="SOLUTION:\nok\n\nREASONING:\nwhy", stderr="", returncode=0
+        )
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 

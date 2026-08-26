@@ -36,8 +36,7 @@ SOLUTION: only one
 """
         res = parse_generation(raw)
         self.assertTrue(res.needs_retry)
-        self.assertIn("missing REASONING",
-                      ",".join(res.errors))
+        self.assertIn("missing REASONING", ",".join(res.errors))
 
     def test_critique_keep_ok(self):
         raw = """
@@ -106,7 +105,9 @@ console.log('B')
         self.assertIn("print('A')", canon)
         self.assertIn("console.log('B')", canon)
         # Ensure IDs stable
-        self.assertEqual(compute_answer_id(raw), compute_answer_id("""
+        self.assertEqual(
+            compute_answer_id(raw),
+            compute_answer_id("""
 ```python
 print('A')
 ```
@@ -114,7 +115,8 @@ print('A')
 ```js
 console.log('B')
 ```
-"""))
+"""),
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

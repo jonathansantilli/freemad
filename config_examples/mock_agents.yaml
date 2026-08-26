@@ -74,4 +74,3 @@ cache:
   enabled: false
   dir: ".mad_cache"
   max_entries: null
-

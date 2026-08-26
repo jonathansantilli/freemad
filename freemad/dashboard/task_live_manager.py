@@ -20,9 +20,13 @@ class TaskLiveManager:
         self._tasks: Dict[str, LiveTaskInfo] = {}
         self._lock = threading.Lock()
 
-    def start_task(self, cfg: Config, *, goal: str, task_type: TaskType, workspace_root: str) -> str:
+    def start_task(
+        self, cfg: Config, *, goal: str, task_type: TaskType, workspace_root: str
+    ) -> str:
         orch = TaskOrchestrator(cfg)
-        task = orch.create_task(goal=goal, task_type=task_type, workspace_root=workspace_root)
+        task = orch.create_task(
+            goal=goal, task_type=task_type, workspace_root=workspace_root
+        )
 
         def _worker() -> None:
             try:
@@ -30,9 +34,13 @@ class TaskLiveManager:
             finally:
                 self._mark_completed(task.task_id)
 
-        thread = threading.Thread(target=_worker, name=f"freemad-task-{task.task_id}", daemon=True)
+        thread = threading.Thread(
+            target=_worker, name=f"freemad-task-{task.task_id}", daemon=True
+        )
         with self._lock:
-            self._tasks[task.task_id] = LiveTaskInfo(task_id=task.task_id, completed=False)
+            self._tasks[task.task_id] = LiveTaskInfo(
+                task_id=task.task_id, completed=False
+            )
         thread.start()
         return task.task_id
 

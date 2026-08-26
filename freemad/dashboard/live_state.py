@@ -92,7 +92,9 @@ def apply_event(snapshot: RunSnapshot, event: RunEvent) -> RunSnapshot:
     if event.kind == RunEventKind.AGENT_GENERATE_STARTED:
         if event.agent_id is None:
             return snapshot
-        agents = _update_agent(snapshot.agents, event.agent_id, status=AgentStatus.GENERATING)
+        agents = _update_agent(
+            snapshot.agents, event.agent_id, status=AgentStatus.GENERATING
+        )
         return RunSnapshot(
             run_id=snapshot.run_id,
             round_index=snapshot.round_index,
@@ -132,7 +134,9 @@ def apply_event(snapshot: RunSnapshot, event: RunEvent) -> RunSnapshot:
     if event.kind == RunEventKind.AGENT_CRITIQUE_STARTED:
         if event.agent_id is None:
             return snapshot
-        agents = _update_agent(snapshot.agents, event.agent_id, status=AgentStatus.CRITIQUING)
+        agents = _update_agent(
+            snapshot.agents, event.agent_id, status=AgentStatus.CRITIQUING
+        )
         return RunSnapshot(
             run_id=snapshot.run_id,
             round_index=snapshot.round_index,
@@ -198,7 +202,11 @@ def apply_event(snapshot: RunSnapshot, event: RunEvent) -> RunSnapshot:
             error=snapshot.error,
         )
 
-    if event.kind in (RunEventKind.RUN_COMPLETED, RunEventKind.RUN_FAILED, RunEventKind.RUN_BUDGET_EXCEEDED):
+    if event.kind in (
+        RunEventKind.RUN_COMPLETED,
+        RunEventKind.RUN_FAILED,
+        RunEventKind.RUN_BUDGET_EXCEEDED,
+    ):
         return RunSnapshot(
             run_id=snapshot.run_id,
             round_index=snapshot.round_index,

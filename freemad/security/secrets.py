@@ -16,4 +16,3 @@ def get_secret(spec: SecretSpec) -> Optional[str]:
         return os.getenv(spec.name)
     # Future: keychain/OS keyring integrations
     return None
-

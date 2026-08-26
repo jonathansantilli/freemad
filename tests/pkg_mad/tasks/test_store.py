@@ -57,7 +57,10 @@ class TestTaskStore(unittest.TestCase):
 
             events = store.list_events(task.task_id)
 
-            self.assertEqual([event.kind.value for event in events], ["stage_started", "human_input_requested"])
+            self.assertEqual(
+                [event.kind.value for event in events],
+                ["stage_started", "human_input_requested"],
+            )
             self.assertEqual(events[0].stage, TaskStage.RESEARCH)
             self.assertEqual(events[0].role, TaskRole.RESEARCHER)
             self.assertEqual(events[1].message, "Clarify success criteria.")
@@ -82,7 +85,9 @@ class TestTaskStore(unittest.TestCase):
             )
 
             self.assertTrue(Path(artifact.path).exists())
-            self.assertEqual(Path(artifact.path).read_text(encoding="utf-8"), "# Plan\n")
+            self.assertEqual(
+                Path(artifact.path).read_text(encoding="utf-8"), "# Plan\n"
+            )
             artifacts = store.list_artifacts(task.task_id)
             self.assertEqual(len(artifacts), 1)
             self.assertEqual(artifacts[0].kind, ArtifactKind.PLAN)
@@ -93,7 +98,13 @@ class TestTaskStore(unittest.TestCase):
     def test_task_state_and_work_items_round_trip_after_reopen(self):
         from freemad.tasks.models import StageAttempt, TaskSnapshot, WorkItem
         from freemad.tasks.store import TaskStore
-        from freemad.types import TaskOutcome, TaskStage, TaskStatus, TaskType, WorkItemStatus
+        from freemad.types import (
+            TaskOutcome,
+            TaskStage,
+            TaskStatus,
+            TaskType,
+            WorkItemStatus,
+        )
 
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "tasks.db"

@@ -19,4 +19,3 @@ def test_critique_prompt_has_required_markers_and_rules():
     assert "STRICT OUTPUT FORMAT" in p
     # Peer numbering guidance
     assert "Peer #1" in p and "Peer #2" in p
-

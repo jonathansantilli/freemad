@@ -218,4 +218,3 @@ export function applyEvent(
 
   return snapshot;
 }
-

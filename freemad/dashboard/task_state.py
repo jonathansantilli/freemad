@@ -45,9 +45,18 @@ def apply_task_event(snapshot: TaskSnapshot, event: TaskEvent) -> TaskSnapshot:
             completed=snapshot.completed,
             error=snapshot.error,
         )
-    if event.kind in (TaskEventKind.TASK_STARTED, TaskEventKind.TASK_COMPLETED, TaskEventKind.TASK_PAUSED, TaskEventKind.TASK_FAILED):
+    if event.kind in (
+        TaskEventKind.TASK_STARTED,
+        TaskEventKind.TASK_COMPLETED,
+        TaskEventKind.TASK_PAUSED,
+        TaskEventKind.TASK_FAILED,
+    ):
         status = event.status or snapshot.status
-        completed = event.kind in (TaskEventKind.TASK_COMPLETED, TaskEventKind.TASK_PAUSED, TaskEventKind.TASK_FAILED)
+        completed = event.kind in (
+            TaskEventKind.TASK_COMPLETED,
+            TaskEventKind.TASK_PAUSED,
+            TaskEventKind.TASK_FAILED,
+        )
         return TaskSnapshot(
             task_id=snapshot.task_id,
             status=status,

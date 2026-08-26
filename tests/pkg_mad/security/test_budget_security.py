@@ -32,7 +32,9 @@ class TestSecurityBudget(unittest.TestCase):
         self.assertTrue(truncated)
         # Ensure main body trimmed near token cap (pre-marker length)
         pre = out.split("[TRUNCATED")[0]
-        self.assertLessEqual(len(pre), cap * 4 + 2)  # includes two newlines before marker
+        self.assertLessEqual(
+            len(pre), cap * 4 + 2
+        )  # includes two newlines before marker
 
 
 if __name__ == "__main__":  # pragma: no cover

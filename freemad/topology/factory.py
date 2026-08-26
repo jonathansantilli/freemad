@@ -21,4 +21,3 @@ def build_topology(cfg: Config) -> Topology:
             raise ConfigError("topology.hub_agent required for star")
         return Star(hub=cfg.topology.hub_agent)
     raise ConfigError(f"unknown topology: {t}")
-

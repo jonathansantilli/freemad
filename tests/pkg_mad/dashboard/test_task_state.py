@@ -43,4 +43,3 @@ def test_task_state_reduces_stage_artifact_and_terminal_events() -> None:
     )
     assert snapshot.status == TaskStatus.COMPLETED
     assert snapshot.completed is True
-

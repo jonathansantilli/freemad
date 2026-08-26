@@ -54,6 +54,13 @@ class DiskCache:
                 break
 
     @staticmethod
-    def make_key(mode: str, agent_id: str, prompt: str, adapter_name: str, temperature: float, max_tokens: int | None) -> str:
+    def make_key(
+        mode: str,
+        agent_id: str,
+        prompt: str,
+        adapter_name: str,
+        temperature: float,
+        max_tokens: int | None,
+    ) -> str:
         base = f"{mode}|{agent_id}|{adapter_name}|{temperature}|{max_tokens}|"
         return base + _sha256(prompt)

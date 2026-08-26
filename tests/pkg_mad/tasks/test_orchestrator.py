@@ -209,7 +209,12 @@ class _ParallelExecutionMockAgent(Agent):
 
     def act(self, request: TaskRequest) -> TaskResponse:
         if request.role == TaskRole.RESEARCHER:
-            return TaskResponse(agent_id=self.agent_cfg.id, stage=request.stage, role=request.role, content="Research")
+            return TaskResponse(
+                agent_id=self.agent_cfg.id,
+                stage=request.stage,
+                role=request.role,
+                content="Research",
+            )
         if request.role == TaskRole.REVIEWER and request.stage == TaskStage.RESEARCH:
             return TaskResponse(
                 agent_id=self.agent_cfg.id,
@@ -255,7 +260,9 @@ class _ParallelExecutionMockAgent(Agent):
             )
         if request.role == TaskRole.IMPLEMENTER and request.work_item is not None:
             _ParallelExecutionMockAgent.barrier.wait(timeout=0.5)
-            filename = "one.txt" if request.work_item.work_item_id == "w-1" else "two.txt"
+            filename = (
+                "one.txt" if request.work_item.work_item_id == "w-1" else "two.txt"
+            )
             return TaskResponse(
                 agent_id=self.agent_cfg.id,
                 stage=request.stage,
@@ -282,7 +289,9 @@ class _ParallelExecutionMockAgent(Agent):
         raise AssertionError(f"Unhandled request: {request}")
 
 
-def _build_cfg(tmp_path: Path, *, include_arbiter: bool = True, max_stage_retries: int = 1):
+def _build_cfg(
+    tmp_path: Path, *, include_arbiter: bool = True, max_stage_retries: int = 1
+):
     register_agent("quorum_mock", _QuorumMockAgent)
     agents = [
         {"id": "researcher-a", "type": "quorum_mock", "roles": ["researcher"]},
@@ -317,7 +326,11 @@ def test_plan_task_completes_after_independent_review(tmp_path: Path) -> None:
     workspace.mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Solidify the implementation plan.", task_type=TaskType.PLAN, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Solidify the implementation plan.",
+        task_type=TaskType.PLAN,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
 
     assert result.status == TaskStatus.COMPLETED
@@ -330,14 +343,22 @@ def test_research_stage_persists_source_bundle_artifact(tmp_path: Path) -> None:
     workspace.mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Research the implementation plan.", task_type=TaskType.PLAN, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Research the implementation plan.",
+        task_type=TaskType.PLAN,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
     artifacts = orch.store.list_artifacts(task.task_id)
-    source_artifacts = [artifact for artifact in artifacts if artifact.kind.value == "source_bundle"]
+    source_artifacts = [
+        artifact for artifact in artifacts if artifact.kind.value == "source_bundle"
+    ]
 
     assert result.status == TaskStatus.COMPLETED
     assert len(source_artifacts) == 1
-    source_payload = json.loads(Path(source_artifacts[0].path).read_text(encoding="utf-8"))
+    source_payload = json.loads(
+        Path(source_artifacts[0].path).read_text(encoding="utf-8")
+    )
     assert source_payload[0]["title"] == "FREE-MAD paper"
     assert source_payload[0]["url"] == "https://arxiv.org/html/2509.11035v1"
 
@@ -348,7 +369,11 @@ def test_plan_review_disagreement_uses_arbiter_after_retry(tmp_path: Path) -> No
     workspace.mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Arbiter should break the plan-review tie.", task_type=TaskType.PLAN, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Arbiter should break the plan-review tie.",
+        task_type=TaskType.PLAN,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
     events = orch.store.list_events(task.task_id)
 
@@ -362,7 +387,11 @@ def test_unresolved_dispute_moves_task_to_waiting_for_human(tmp_path: Path) -> N
     workspace.mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Human clarification is required for this plan.", task_type=TaskType.PLAN, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Human clarification is required for this plan.",
+        task_type=TaskType.PLAN,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
     events = orch.store.list_events(task.task_id)
 
@@ -376,7 +405,11 @@ def test_retry_exhaustion_without_arbiter_pauses_task(tmp_path: Path) -> None:
     workspace.mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Pause when review retries are exhausted.", task_type=TaskType.PLAN, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Pause when review retries are exhausted.",
+        task_type=TaskType.PLAN,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
 
     assert result.status == TaskStatus.PAUSED
@@ -389,7 +422,11 @@ def test_code_task_writes_files_and_completes(tmp_path: Path) -> None:
     (workspace / "src").mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Implement the approved code plan.", task_type=TaskType.CODE, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Implement the approved code plan.",
+        task_type=TaskType.CODE,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
 
     assert result.status == TaskStatus.COMPLETED
@@ -403,10 +440,18 @@ def test_execute_runs_non_overlapping_work_items_in_parallel(tmp_path: Path) -> 
     cfg = load_config(
         overrides={
             "agents": [
-                {"id": "researcher-a", "type": "parallel_mock", "roles": ["researcher"]},
+                {
+                    "id": "researcher-a",
+                    "type": "parallel_mock",
+                    "roles": ["researcher"],
+                },
                 {"id": "planner-a", "type": "parallel_mock", "roles": ["planner"]},
                 {"id": "reviewer-a", "type": "parallel_mock", "roles": ["reviewer"]},
-                {"id": "implementer-a", "type": "parallel_mock", "roles": ["implementer"]},
+                {
+                    "id": "implementer-a",
+                    "type": "parallel_mock",
+                    "roles": ["implementer"],
+                },
                 {"id": "verifier-a", "type": "parallel_mock", "roles": ["verifier"]},
             ],
             "task": {
@@ -427,7 +472,11 @@ def test_execute_runs_non_overlapping_work_items_in_parallel(tmp_path: Path) -> 
     (workspace / "src").mkdir()
 
     orch = TaskOrchestrator(cfg)
-    task = orch.create_task(goal="Execute disjoint work items in parallel.", task_type=TaskType.CODE, workspace_root=str(workspace))
+    task = orch.create_task(
+        goal="Execute disjoint work items in parallel.",
+        task_type=TaskType.CODE,
+        workspace_root=str(workspace),
+    )
     result = orch.run(task.task_id)
 
     assert result.status == TaskStatus.COMPLETED
@@ -435,7 +484,9 @@ def test_execute_runs_non_overlapping_work_items_in_parallel(tmp_path: Path) -> 
     assert (workspace / "src" / "two.txt").read_text(encoding="utf-8") == "two.txt\n"
 
 
-def test_partition_work_items_groups_only_non_overlapping_scopes(tmp_path: Path) -> None:
+def test_partition_work_items_groups_only_non_overlapping_scopes(
+    tmp_path: Path,
+) -> None:
     cfg = _build_cfg(tmp_path)
     orch = TaskOrchestrator(cfg)
     work_items = [

@@ -49,8 +49,16 @@ class TestRunEvents(unittest.TestCase):
                     {"id": "a1", "type": "events_keep"},
                     {"id": "a2", "type": "events_keep"},
                 ],
-                "deadlines": {"soft_timeout_ms": 50, "hard_timeout_ms": 100, "min_agents": 2},
-                "budget": {"max_total_time_sec": 10, "max_round_time_sec": 2, "max_agent_time_sec": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 50,
+                    "hard_timeout_ms": 100,
+                    "min_agents": 2,
+                },
+                "budget": {
+                    "max_total_time_sec": 10,
+                    "max_round_time_sec": 2,
+                    "max_agent_time_sec": 2,
+                },
             }
         )
 

@@ -62,17 +62,17 @@ class Agent(abc.ABC):
         self.agent_cfg = agent_cfg
 
     @abc.abstractmethod
-    def generate(self, requirement: str) -> AgentResponse:
-        ...
+    def generate(self, requirement: str) -> AgentResponse: ...
 
     @abc.abstractmethod
     def critique_and_refine(
         self, requirement: str, own_response: str, peer_responses: List[str]
-    ) -> CritiqueResponse:
-        ...
+    ) -> CritiqueResponse: ...
 
     def act(self, request: TaskRequest) -> TaskResponse:
-        raise NotImplementedError(f"{self.__class__.__name__} does not implement autonomous task actions")
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement autonomous task actions"
+        )
 
     def health(self) -> HealthStatus:
         """Default health check: verify cli_command exists and responds to --version.

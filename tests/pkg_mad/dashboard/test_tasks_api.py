@@ -26,15 +26,30 @@ from tests.pkg_mad.tasks.test_orchestrator import _QuorumMockAgent
 
 class _SlowTaskMockAgent(Agent):
     def generate(self, requirement: str) -> AgentResponse:
-        return AgentResponse(self.agent_cfg.id, "solution", "reasoning", "answer", Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, "solution", "reasoning", "answer", Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "keep", "answer", Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "keep",
+            "answer",
+            Metadata(),
+        )
 
     def act(self, request: TaskRequest) -> TaskResponse:
         if request.role == TaskRole.RESEARCHER:
             time.sleep(0.4)
-            return TaskResponse(agent_id=self.agent_cfg.id, stage=request.stage, role=request.role, content="Research")
+            return TaskResponse(
+                agent_id=self.agent_cfg.id,
+                stage=request.stage,
+                role=request.role,
+                content="Research",
+            )
         if request.role == TaskRole.REVIEWER and request.stage == TaskStage.RESEARCH:
             return TaskResponse(
                 agent_id=self.agent_cfg.id,
@@ -44,7 +59,12 @@ class _SlowTaskMockAgent(Agent):
                 review_decision=ReviewDecision.APPROVE,
             )
         if request.role == TaskRole.PLANNER:
-            return TaskResponse(agent_id=self.agent_cfg.id, stage=request.stage, role=request.role, content="Plan")
+            return TaskResponse(
+                agent_id=self.agent_cfg.id,
+                stage=request.stage,
+                role=request.role,
+                content="Plan",
+            )
         if request.role == TaskRole.REVIEWER and request.stage == TaskStage.PLAN_REVIEW:
             return TaskResponse(
                 agent_id=self.agent_cfg.id,
@@ -132,7 +152,9 @@ def test_task_api_and_websocket(tmp_path: Path) -> None:
     assert task_id in index.text
 
 
-def test_task_api_runs_in_background_and_websocket_streams_live_events(tmp_path: Path) -> None:
+def test_task_api_runs_in_background_and_websocket_streams_live_events(
+    tmp_path: Path,
+) -> None:
     register_agent("slow_task_mock", _SlowTaskMockAgent)
     app = create_app(
         DashboardConfig(
@@ -154,9 +176,17 @@ def test_task_api_runs_in_background_and_websocket_streams_live_events(tmp_path:
             "workspace_root": str(workspace),
             "overrides": {
                 "agents": [
-                    {"id": "researcher-a", "type": "slow_task_mock", "roles": ["researcher"]},
+                    {
+                        "id": "researcher-a",
+                        "type": "slow_task_mock",
+                        "roles": ["researcher"],
+                    },
                     {"id": "planner-a", "type": "slow_task_mock", "roles": ["planner"]},
-                    {"id": "reviewer-a", "type": "slow_task_mock", "roles": ["reviewer"]},
+                    {
+                        "id": "reviewer-a",
+                        "type": "slow_task_mock",
+                        "roles": ["reviewer"],
+                    },
                 ],
             },
         },
