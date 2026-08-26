@@ -18,7 +18,7 @@ Run from the repository root:
     export REPO=$(git -C /path/to/freemad rev-parse --show-toplevel)
     export PATH="$(cd "$REPO" && poetry env info -p)/bin:$PATH"
     export PYTHONPATH="$REPO"
-    alias fm='python -m freemad.cli'
+    alias fm=freemad   # the installed console script; `python -m freemad.cli` also works but warns
 
 ## Pre-flight (seconds)
 
