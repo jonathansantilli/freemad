@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 
 from freemad.evolve.context import ContextInput, failure_signature, generate_context
@@ -97,7 +97,7 @@ def _record(
 
 class TestGenerateContext:
     def _input(self, **overrides) -> ContextInput:
-        base = dict(
+        base: Dict[str, Any] = dict(
             goal="make it fast",
             iteration=3,
             best_iteration=1,

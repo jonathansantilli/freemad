@@ -5,14 +5,14 @@ import sys
 import subprocess
 from dataclasses import replace
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Sequence
 
 
 from freemad.agents.base import Agent
 from freemad.config import Config, load_config
 from freemad.evolve.orchestrator import EvolveOrchestrator
 from freemad.tasks.models import TaskRequest, TaskResponse
-from freemad.types import EvolveRunStatus, EvolveStopReason, IterationOutcome
+from freemad.types import EvolveRunStatus, EvolveStopReason, GateOp, IterationOutcome
 
 SLOW_IMPL = """\
 import time
@@ -72,7 +72,7 @@ class ScriptedAgent(Agent):
     """Fake worker: pops a scripted file write per act() call."""
 
     def __init__(
-        self, cfg: Config, agent_cfg, scripts: Optional[List[Optional[str]]] = None
+        self, cfg: Config, agent_cfg, scripts: Optional[Sequence[Optional[str]]] = None
     ):
         super().__init__(cfg, agent_cfg)
         self._scripts = list(scripts or [])
@@ -157,11 +157,12 @@ def make_config(repo: Path, tmp_path: Path, **overrides) -> Config:
     return cfg
 
 
-def build_orchestrator(cfg: Config, scripts: List[Optional[str]]):
+def build_orchestrator(
+    cfg: Config, scripts: Sequence[Optional[str]]
+) -> EvolveOrchestrator:
     orch = EvolveOrchestrator(cfg)
     agent = ScriptedAgent(cfg, cfg.agents[0], scripts)
     orch._resolve_agent = lambda: agent  # type: ignore[method-assign]
-    orch._agent_ref = agent
     return orch
 
 
@@ -357,7 +358,7 @@ class TestIterations:
                     max_iterations=1,
                     target=(
                         GatePredicateConfig(
-                            component="ops_per_sec", op=">=", value=10**12
+                            component="ops_per_sec", op=GateOp.GTE, value=10**12
                         ),
                     ),
                 ),

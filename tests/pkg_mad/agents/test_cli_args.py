@@ -90,6 +90,7 @@ def test_mode_flags_apply_per_call_mode(monkeypatch):
         }
     )
     agent = AgentFactory(cfg).build_all()["w"]
+    assert isinstance(agent, CLIAdapter)
     calls = []
 
     class Done:
@@ -131,6 +132,7 @@ def test_mode_flag_family_covers_every_task_stage(monkeypatch):
         }
     )
     agent = AgentFactory(cfg).build_all()["w"]
+    assert isinstance(agent, CLIAdapter)
     calls = []
 
     class Done:
@@ -138,10 +140,11 @@ def test_mode_flag_family_covers_every_task_stage(monkeypatch):
         stdout = "{}"
         stderr = ""
 
-    monkeypatch.setattr(
-        "freemad.agents.cli_adapter.subprocess.run",
-        lambda cmd, **_: (calls.append(list(cmd)), Done())[1],
-    )
+    def fake(cmd, **_):
+        calls.append(list(cmd))
+        return Done()
+
+    monkeypatch.setattr("freemad.agents.cli_adapter.subprocess.run", fake)
     agent._run_cli("hi", mode="task-execute")
     agent._run_cli("hi", mode="task-review")
     agent._run_cli("hi", mode="generating")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterator
 
 import pytest
 
@@ -22,7 +23,7 @@ def snapshot(run_id: str = "r1") -> EvolveRunSnapshot:
 
 
 @pytest.fixture()
-def store(tmp_path: Path) -> EvolveStore:
+def store(tmp_path: Path) -> Iterator[EvolveStore]:
     s = EvolveStore(tmp_path / "evolve.db")
     yield s
     s.close()
@@ -78,7 +79,7 @@ class TestEvents:
     def test_append_assigns_increasing_seq(self, store: EvolveStore) -> None:
         e1 = store.append_event("r1", EvolveEventKind.RUN_CREATED, 0, {"a": 1})
         e2 = store.append_event("r1", EvolveEventKind.RUN_STARTED, 1)
-        assert e2.seq == e1.seq + 1
+        assert e1.seq is not None and e2.seq == e1.seq + 1
 
     def test_payload_json_roundtrip_sorted_keys(self, store: EvolveStore) -> None:
         payload = {"z": 1, "a": {"c": 2, "b": [1, 2]}}

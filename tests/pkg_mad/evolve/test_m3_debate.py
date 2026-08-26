@@ -69,7 +69,9 @@ class DebaterImplementer(SupervisedAgent):
         from freemad.tasks.models import FileWrite
 
         if "Implement EXACTLY your winning proposal" in request.goal:
-            writes = (FileWrite(path="impl.py", content=FAST_IMPL),)
+            writes: tuple[FileWrite, ...] = (
+                FileWrite(path="impl.py", content=FAST_IMPL),
+            )
         else:
             writes = ()
         response = super().act(request)

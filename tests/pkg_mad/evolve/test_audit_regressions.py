@@ -10,7 +10,7 @@ import sys
 
 import json
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 import pytest
 
@@ -440,12 +440,13 @@ def test_rebuilt_intervention_counter_resets_on_a_new_best(toy_repo, tmp_path):
     snap = orch.create_run("goal")
     run_id = snap.run_id
 
-    for kind, payload in [
+    events: List[Tuple[EvolveEventKind, Dict[str, Any]]] = [
         (EvolveEventKind.SUPERVISOR_TRIGGERED, {"cause": SupervisorCause.STALL.value}),
         (EvolveEventKind.SUPERVISOR_TRIGGERED, {"cause": SupervisorCause.STALL.value}),
         (EvolveEventKind.CANDIDATE_COMMITTED, {"sha": "abc", "tag": "v1", "score": {}}),
         (EvolveEventKind.SUPERVISOR_TRIGGERED, {"cause": SupervisorCause.LOOP.value}),
-    ]:
+    ]
+    for kind, payload in events:
         orch._store.append_event(run_id, kind, 1, payload)
 
     orch._state.pop(run_id, None)

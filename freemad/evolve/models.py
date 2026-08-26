@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, overload
 
 from freemad.types import (
     EvolveEventKind,
@@ -16,7 +16,15 @@ from freemad.types import (
 class ScoreVector:
     components: Dict[str, float] = field(default_factory=dict)
 
+    @overload
+    def get(self, component: str) -> Optional[float]: ...
+
+    @overload
+    def get(self, component: str, default: float) -> float: ...
+
     def get(self, component: str, default: Optional[float] = None) -> Optional[float]:
+        # Overloaded like dict.get: a caller that supplies a default gets a float back,
+        # not an Optional it then has to re-narrow.
         return self.components.get(component, default)
 
     def to_dict(self) -> Dict[str, float]:

@@ -11,22 +11,27 @@ from freemad.evolve.judge import (
     within_regress_bounds,
 )
 from freemad.evolve.models import ScoreVector
+from freemad.types import CompareDirection, GateOp
 
 
 def sv(**components: float) -> ScoreVector:
     return ScoreVector(components=dict(components))
 
 
-MAX_TERM = ComparatorTermConfig(component="ops", direction="maximize", epsilon=2.0)
-MIN_TERM = ComparatorTermConfig(component="latency", direction="minimize", epsilon=0.5)
+MAX_TERM = ComparatorTermConfig(
+    component="ops", direction=CompareDirection.MAXIMIZE, epsilon=2.0
+)
+MIN_TERM = ComparatorTermConfig(
+    component="latency", direction=CompareDirection.MINIMIZE, epsilon=0.5
+)
 BOTH = (MAX_TERM, MIN_TERM)
 
 
 class TestEvaluateGate:
     def test_pass_when_all_predicates_hold(self) -> None:
         gate = (
-            GatePredicateConfig(component="ops", op=">", value=10),
-            GatePredicateConfig(component="mem", op="<=", value=100),
+            GatePredicateConfig(component="ops", op=GateOp.GT, value=10),
+            GatePredicateConfig(component="mem", op=GateOp.LTE, value=100),
         )
         ok, failures = evaluate_gate(sv(ops=11, mem=99), gate)
         assert ok and failures == ()
@@ -46,12 +51,12 @@ class TestEvaluateGate:
         ],
     )
     def test_ops(self, op: str, value: float, actual: float, expected: bool) -> None:
-        gate = (GatePredicateConfig(component="x", op=op, value=value),)
+        gate = (GatePredicateConfig(component="x", op=GateOp(op), value=value),)
         ok, _ = evaluate_gate(sv(x=actual), gate)
         assert ok is expected
 
     def test_missing_component_fails_closed(self) -> None:
-        gate = (GatePredicateConfig(component="absent", op=">", value=0),)
+        gate = (GatePredicateConfig(component="absent", op=GateOp.GT, value=0),)
         ok, failures = evaluate_gate(sv(other=1), gate)
         assert not ok
         assert failures[0].actual is None
@@ -62,7 +67,7 @@ class TestEvaluateGate:
         assert ok and failures == ()
 
     def test_failure_describe_includes_actual(self) -> None:
-        gate = (GatePredicateConfig(component="ops", op=">=", value=10),)
+        gate = (GatePredicateConfig(component="ops", op=GateOp.GTE, value=10),)
         _, failures = evaluate_gate(sv(ops=4), gate)
         assert "ops" in failures[0].describe()
         assert "4" in failures[0].describe()
@@ -121,7 +126,9 @@ class TestCompareScores:
         assert not compare_scores(sv(ops=1), sv(ops=500, latency=1.0), BOTH)
 
     def test_epsilon_zero_requires_exact_improvement(self) -> None:
-        zero = ComparatorTermConfig(component="ops", direction="maximize", epsilon=0.0)
+        zero = ComparatorTermConfig(
+            component="ops", direction=CompareDirection.MAXIMIZE, epsilon=0.0
+        )
         assert compare_scores(sv(ops=100.001), sv(ops=100), (zero,))
         assert not compare_scores(sv(ops=100.0), sv(ops=100), (zero,))
         assert not compare_scores(sv(ops=99.999), sv(ops=100), (zero,))
@@ -136,7 +143,10 @@ class TestWithinRegressBounds:
 
     def test_explicit_max_regress_overrides(self) -> None:
         term = ComparatorTermConfig(
-            component="ops", direction="maximize", epsilon=2.0, max_regress=20.0
+            component="ops",
+            direction=CompareDirection.MAXIMIZE,
+            epsilon=2.0,
+            max_regress=20.0,
         )
         ok, _ = within_regress_bounds(sv(ops=85), sv(ops=100), (term,))
         assert ok
@@ -144,7 +154,9 @@ class TestWithinRegressBounds:
         assert not ok
 
     def test_minimize_bound(self) -> None:
-        term = ComparatorTermConfig(component="lat", direction="minimize", epsilon=1.0)
+        term = ComparatorTermConfig(
+            component="lat", direction=CompareDirection.MINIMIZE, epsilon=1.0
+        )
         best = sv(lat=1.0)
         # 3.0 is a full unit worse than the allowed worst (best + epsilon = 2.0).
         ok, _ = within_regress_bounds(sv(lat=3.0), best, (term,))
@@ -154,7 +166,9 @@ class TestWithinRegressBounds:
         assert ok
 
     def test_drift_is_not_cumulative_across_generations(self) -> None:
-        term = ComparatorTermConfig(component="ops", direction="maximize", epsilon=2.0)
+        term = ComparatorTermConfig(
+            component="ops", direction=CompareDirection.MAXIMIZE, epsilon=2.0
+        )
         best_ever = sv(ops=100)
         gen1 = sv(ops=99)
         gen2 = sv(ops=98)
@@ -219,7 +233,7 @@ class TestParseStageStdout:
 
 class TestTargetMet:
     def test_target_met_true_and_false(self) -> None:
-        target = (GatePredicateConfig(component="ops", op=">=", value=100),)
+        target = (GatePredicateConfig(component="ops", op=GateOp.GTE, value=100),)
         assert target_met(sv(ops=150), target)
         assert not target_met(sv(ops=50), target)
         assert not target_met(sv(), target)
