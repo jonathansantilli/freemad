@@ -725,6 +725,14 @@ marked as covered by M1. The one warning on 3.10 is a `StarletteDeprecationWarni
 raised inside `fastapi/testclient.py` by the newest pip-resolved Starlette — a
 dependency's notice, not ours.
 
+Addendum, same day. Asked whether anything was still pending, I checked the one CI job I
+had not replayed: `smoke`, which runs `test_smoke_adapters.py` with `SMOKE=1` — skipped
+in every ordinary run, so a green full suite says nothing about it. It failed under the
+harsh condition, and identically at `origin/main`: a fourth bare `python`, in the mock
+agent's `cli_command` and its allowlist. CI passes it only because `setup-python` puts a
+`python` on PATH. Same fix as the health test, `sys.executable`; it passes on 3.13 with
+no venv on PATH, on 3.10, and under `poetry run`, and stays skipped without `SMOKE=1`.
+
 ### Process notes
 
 - I picked the `security-auditor` agent type for the security lens; its toolset is
