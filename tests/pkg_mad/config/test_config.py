@@ -78,7 +78,11 @@ class TestConfig(unittest.TestCase):
 
     def test_budget_tokens_must_be_positive_when_enforced(self):
         with self.assertRaises(ConfigError):
-            load_config(overrides={"budget": {"enforce_total_tokens": True, "max_total_tokens": -5}})
+            load_config(
+                overrides={
+                    "budget": {"enforce_total_tokens": True, "max_total_tokens": -5}
+                }
+            )
 
     def test_invalid_yaml_file_raises(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -95,9 +99,24 @@ class TestConfig(unittest.TestCase):
     def test_k_reviewers_cannot_exceed_agents(self):
         overrides = {
             "agents": [
-                {"id": "a", "type": "claude_code", "enabled": True, "cli_command": "python"},
-                {"id": "b", "type": "claude_code", "enabled": True, "cli_command": "python"},
-                {"id": "c", "type": "claude_code", "enabled": True, "cli_command": "python"},
+                {
+                    "id": "a",
+                    "type": "claude_code",
+                    "enabled": True,
+                    "cli_command": "python",
+                },
+                {
+                    "id": "b",
+                    "type": "claude_code",
+                    "enabled": True,
+                    "cli_command": "python",
+                },
+                {
+                    "id": "c",
+                    "type": "claude_code",
+                    "enabled": True,
+                    "cli_command": "python",
+                },
             ],
             "topology": {"type": "k_reviewers", "k": 3},
         }
@@ -123,7 +142,9 @@ class TestConfig(unittest.TestCase):
             prev_cwd = os.getcwd()
             os.chdir(tmp)
             try:
-                cfg = load_config(path=cfg_path.name, overrides={"output": {"verbose": True}})
+                cfg = load_config(
+                    path=cfg_path.name, overrides={"output": {"verbose": True}}
+                )
                 self.assertEqual(cfg.output.format, "markdown")
                 self.assertTrue(cfg.output.verbose)
                 self.assertTrue(Path(cfg.output.transcript_dir).exists())
@@ -176,16 +197,47 @@ task:
                 self.assertEqual(cfg.task.artifacts_dir, ".freemad/tasks/artifacts")
                 self.assertEqual(cfg.task.max_stage_retries, 3)
                 self.assertEqual(cfg.task.max_total_iterations, 12)
-                self.assertEqual([role.value for role in cfg.agents[0].roles], ["planner", "reviewer"])
-                self.assertEqual([role.value for role in cfg.agents[1].roles], ["implementer", "verifier"])
+                self.assertEqual(
+                    [role.value for role in cfg.agents[0].roles],
+                    ["planner", "reviewer"],
+                )
+                self.assertEqual(
+                    [role.value for role in cfg.agents[1].roles],
+                    ["implementer", "verifier"],
+                )
                 self.assertTrue(cfg.task.tool_policy.allow_web_research)
-                self.assertEqual(cfg.task.tool_policy.allowed_write_roots, ["freemad", "tests"])
-                self.assertEqual(cfg.task.tool_policy.allowed_local_commands, ["python3", "pytest"])
-                self.assertEqual(cfg.task.tool_policy.verification_commands, ["pytest -q"])
+                self.assertEqual(
+                    cfg.task.tool_policy.allowed_write_roots, ["freemad", "tests"]
+                )
+                self.assertEqual(
+                    cfg.task.tool_policy.allowed_local_commands, ["python3", "pytest"]
+                )
+                self.assertEqual(
+                    cfg.task.tool_policy.verification_commands, ["pytest -q"]
+                )
             finally:
                 os.chdir(prev_cwd)
 
-    def test_absolute_transcript_dir_outside_config_root_is_rejected(self):
+    def test_relative_transcript_dir_is_created_under_the_working_directory(self):
+        """Where cli.py writes it — not beside the config file (a phantom dir, until now)."""
+        with tempfile.TemporaryDirectory() as cfg_dir, tempfile.TemporaryDirectory() as work:
+            cfg_path = Path(cfg_dir) / "cfg.json"
+            cfg_path.write_text(
+                json.dumps(
+                    {"output": {"save_transcript": True, "transcript_dir": "t_out"}}
+                ),
+                encoding="utf-8",
+            )
+            prev_cwd = os.getcwd()
+            os.chdir(work)
+            try:
+                load_config(path=str(cfg_path))
+            finally:
+                os.chdir(prev_cwd)
+            self.assertTrue((Path(work) / "t_out").is_dir())
+            self.assertFalse((Path(cfg_dir) / "t_out").exists())
+
+    def test_absolute_transcript_dir_outside_the_working_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
             cfg_path = Path(tmp) / "cfg.json"
             data = {
@@ -203,7 +255,11 @@ task:
             load_config(
                 overrides={
                     "agents": [
-                        {"id": "a", "type": "claude_code", "roles": ["planner", "not-a-role"]},
+                        {
+                            "id": "a",
+                            "type": "claude_code",
+                            "roles": ["planner", "not-a-role"],
+                        },
                         {"id": "b", "type": "openai_codex", "roles": ["reviewer"]},
                     ]
                 }

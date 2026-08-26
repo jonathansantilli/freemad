@@ -1278,12 +1278,15 @@ def load_config(
     cfg = _resolve_evolve_paths(cfg, config_root)
     validate_config(cfg)
 
-    # Ensure transcript dir exists if requested
+    # output.transcript_dir and cache.dir are *used* relative to the working directory
+    # (cli.py / DiskCache), so they are created and confined there too. Checking them
+    # against the config file's directory created a phantom directory beside the config
+    # and rejected overrides that the write path would have accepted.
+    working_root = Path.cwd().resolve()
     if cfg.output.save_transcript:
-        _ensure_dir(cfg.output.transcript_dir, config_root)
-    # Ensure cache dir if enabled
+        _ensure_dir(cfg.output.transcript_dir, working_root)
     if cfg.cache.enabled and cfg.cache.dir:
-        _ensure_dir(cfg.cache.dir, config_root)
+        _ensure_dir(cfg.cache.dir, working_root)
 
     return cfg
 
@@ -1291,8 +1294,9 @@ def load_config(
 def _resolve_evolve_paths(cfg: Config, root: Path) -> Config:
     """Anchor `evolve.repo_path` and `store_path` to the config file's directory.
 
-    Every other config-managed path already resolves against the config root. Leaving
-    these two relative to the *working* directory means `--config
+    Unlike `output.transcript_dir` and `cache.dir`, which are outputs written relative
+    to the working directory, these two name the *input*. Leaving them relative to the
+    working directory means `--config
     examples/evolve_toy/evolve.yaml`, run from the repo root exactly as the README
     shows, silently optimizes the outer repository instead.
     """
