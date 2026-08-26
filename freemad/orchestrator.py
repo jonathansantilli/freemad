@@ -26,7 +26,9 @@ class AnswerSelector:
         self._tie_break = tie_break
         self._seed = seed
 
-    def select(self, scores: Dict[str, float], conf: Dict[str, float], answers: Dict[str, str]) -> str:
+    def select(
+        self, scores: Dict[str, float], conf: Dict[str, float], answers: Dict[str, str]
+    ) -> str:
         if not scores:
             if not answers:
                 return ""
@@ -64,7 +66,9 @@ class DeadlineManager:
             if remaining_soft <= 0:
                 break
             done, _ = concurrent.futures.wait(
-                list(remaining.keys()), timeout=remaining_soft, return_when=concurrent.futures.FIRST_COMPLETED
+                list(remaining.keys()),
+                timeout=remaining_soft,
+                return_when=concurrent.futures.FIRST_COMPLETED,
             )
             for d in done:
                 aid = remaining.pop(d)
@@ -85,7 +89,9 @@ class DeadlineManager:
                 deadline_hit_hard = True
                 break
             done, _ = concurrent.futures.wait(
-                list(remaining.keys()), timeout=remaining_hard, return_when=concurrent.futures.FIRST_COMPLETED
+                list(remaining.keys()),
+                timeout=remaining_hard,
+                return_when=concurrent.futures.FIRST_COMPLETED,
             )
             for d in done:
                 aid = remaining.pop(d)
@@ -134,7 +140,9 @@ class Orchestrator:
         self.score = ScoreTracker(cfg)
         self.answer_text: Dict[str, str] = {}
         self.logger = get_logger(cfg)
-        self._token_budget = TokenBudget(cfg.budget.max_total_tokens, cfg.budget.enforce_total_tokens)
+        self._token_budget = TokenBudget(
+            cfg.budget.max_total_tokens, cfg.budget.enforce_total_tokens
+        )
         self._observer: RunObserver = observer or NullObserver()
         self._selector = AnswerSelector(cfg.scoring.tie_break, cfg.scoring.random_seed)
         self._deadline_manager = DeadlineManager()
@@ -144,7 +152,12 @@ class Orchestrator:
             self._observer.on_event(event)
         except Exception as exc:
             # Observers must be best-effort and never break orchestration.
-            log_event(self.logger, LogEvent.HEALTH_STATUS, level=logging.DEBUG, error=f"observer error: {exc}")
+            log_event(
+                self.logger,
+                LogEvent.HEALTH_STATUS,
+                level=logging.DEBUG,
+                error=f"observer error: {exc}",
+            )
             return
 
     def _record_answer(self, text: str) -> str:
@@ -152,13 +165,17 @@ class Orchestrator:
         self.answer_text[ans_id] = text
         return ans_id
 
-    def run(self, requirement: str, max_rounds: int = 1, run_id: Optional[str] = None) -> dict:
+    def run(
+        self, requirement: str, max_rounds: int = 1, run_id: Optional[str] = None
+    ) -> dict:
         run_id = run_id or str(uuid.uuid4())
         current_solution: Dict[str, str] = {}
         current_answer_id: Dict[str, str] = {}
         transcript: List[RoundTranscript] = []
 
-        guard = BudgetGuard(self.cfg.budget.max_total_time_sec, self.cfg.budget.max_round_time_sec)
+        guard = BudgetGuard(
+            self.cfg.budget.max_total_time_sec, self.cfg.budget.max_round_time_sec
+        )
         guard.check_total()
 
         requirement_trunc, _ = enforce_size(
@@ -183,10 +200,23 @@ class Orchestrator:
         )
 
         # Round 0: generation
-        self._run_generation_round(run_id, requirement_trunc, current_solution, current_answer_id, transcript, guard)
+        self._run_generation_round(
+            run_id,
+            requirement_trunc,
+            current_solution,
+            current_answer_id,
+            transcript,
+            guard,
+        )
         # Critique rounds
         early_stop_reason, transcript = self._run_critique_rounds(
-            run_id, requirement_trunc, max_rounds, guard, current_solution, current_answer_id, transcript
+            run_id,
+            requirement_trunc,
+            max_rounds,
+            guard,
+            current_solution,
+            current_answer_id,
+            transcript,
         )
 
         all_scores = self.score.get_all_scores()
@@ -196,14 +226,27 @@ class Orchestrator:
         best_ans = self._selector.select(all_scores, vconf, self.answer_text)
         final_solution = self.answer_text.get(best_ans, "")
 
-        winning_agents = [aid for aid, ans in current_answer_id.items() if ans == best_ans]
+        winning_agents = [
+            aid for aid, ans in current_answer_id.items() if ans == best_ans
+        ]
         origin_agents: List[str] = []
         for t in transcript:
-            holders = [aid for aid, rec in t.agents.items() if rec.response.answer_id == best_ans]
+            holders = [
+                aid
+                for aid, rec in t.agents.items()
+                if rec.response.answer_id == best_ans
+            ]
             if holders:
                 origin_agents = holders
                 break
-        holders_history = {t.round_index: [aid for aid, rec in t.agents.items() if rec.response.answer_id == best_ans] for t in transcript}
+        holders_history = {
+            t.round_index: [
+                aid
+                for aid, rec in t.agents.items()
+                if rec.response.answer_id == best_ans
+            ]
+            for t in transcript
+        }
 
         self._emit(
             RunEvent(
@@ -231,7 +274,10 @@ class Orchestrator:
                     "type": t.type.value,
                     "agents": {
                         aid: {
-                            "response": (asdict(rec.response) | {"decision": rec.response.decision.value}),
+                            "response": (
+                                asdict(rec.response)
+                                | {"decision": rec.response.decision.value}
+                            ),
                             "peers_assigned": rec.peers_assigned,
                             "peers_assigned_count": len(rec.peers_assigned),
                             "peers_seen": rec.peers_seen,
@@ -246,9 +292,18 @@ class Orchestrator:
                 }
                 for t in transcript
             ],
-            "validation": {ans: {name: vars(res) for name, res in vresults[ans].items()} for ans in self.answer_text.keys()},
+            "validation": {
+                ans: {name: vars(res) for name, res in vresults[ans].items()}
+                for ans in self.answer_text.keys()
+            },
             "validator_confidence": vconf,
-            "score_explainers": {ans: [{**e.__dict__, "action": e.action.value} for e in self.score.explain_score(ans)] for ans in self.answer_text.keys()},
+            "score_explainers": {
+                ans: [
+                    {**e.__dict__, "action": e.action.value}
+                    for e in self.score.explain_score(ans)
+                ]
+                for ans in self.answer_text.keys()
+            },
             "metrics": self._compute_metrics(transcript, best_ans, vresults),
         }
         self._emit(
@@ -271,7 +326,9 @@ class Orchestrator:
         guard: BudgetGuard,
     ) -> None:
         gen_agents: Dict[str, AgentRoundRecord] = {}
-        log_event(self.logger, LogEvent.ROUND_START, round=0, type=RoundType.GENERATION.value)
+        log_event(
+            self.logger, LogEvent.ROUND_START, round=0, type=RoundType.GENERATION.value
+        )
         self._emit(
             RunEvent(
                 kind=RunEventKind.ROUND_STARTED,
@@ -281,7 +338,9 @@ class Orchestrator:
                 round_type=RoundType.GENERATION,
             )
         )
-        max_workers = min(len(self.agents), self.cfg.budget.max_concurrent_agents or len(self.agents))
+        max_workers = min(
+            len(self.agents), self.cfg.budget.max_concurrent_agents or len(self.agents)
+        )
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
             gen_futs: Dict[concurrent.futures.Future[Any], str] = {}
             for aid, a in self.agents.items():
@@ -303,7 +362,9 @@ class Orchestrator:
                 current_solution[aid] = resp.solution
                 current_answer_id[aid] = ans_id
                 if (resp.solution or "").strip():
-                    self.score.record_initial(agent_id=aid, answer_id=ans_id, round_idx=0)
+                    self.score.record_initial(
+                        agent_id=aid, answer_id=ans_id, round_idx=0
+                    )
                 t_in = int(resp.metadata.tokens.get("prompt", 0))
                 t_out = int(resp.metadata.tokens.get("output", 0))
                 self._token_budget.add(t_in + t_out)
@@ -336,7 +397,8 @@ class Orchestrator:
 
         scores_round0 = self.score.get_all_scores()
         holders_round0: Dict[str, List[str]] = {
-            ans: [aid for aid, curr in current_answer_id.items() if curr == ans] for ans in scores_round0.keys()
+            ans: [aid for aid, curr in current_answer_id.items() if curr == ans]
+            for ans in scores_round0.keys()
         }
         transcript.append(
             RoundTranscript(
@@ -344,12 +406,16 @@ class Orchestrator:
                 type=RoundType.GENERATION,
                 agents=gen_agents,
                 scores=scores_round0,
-                topology_info=self.topology.info() if self.cfg.output.include_topology_info else {},
+                topology_info=self.topology.info()
+                if self.cfg.output.include_topology_info
+                else {},
                 deadline_hit_soft=False,
                 deadline_hit_hard=False,
             )
         )
-        log_event(self.logger, LogEvent.ROUND_END, round=0, type=RoundType.GENERATION.value)
+        log_event(
+            self.logger, LogEvent.ROUND_END, round=0, type=RoundType.GENERATION.value
+        )
         self._emit(
             RunEvent(
                 kind=RunEventKind.SCORES_UPDATED,
@@ -390,7 +456,12 @@ class Orchestrator:
                 log_event(self.logger, LogEvent.BUDGET_EXCEEDED, scope="total", round=r)
                 break
             rs = guard.round_start()
-            log_event(self.logger, LogEvent.ROUND_START, round=r, type=RoundType.CRITIQUE.value)
+            log_event(
+                self.logger,
+                LogEvent.ROUND_START,
+                round=r,
+                type=RoundType.CRITIQUE.value,
+            )
             self._emit(
                 RunEvent(
                     kind=RunEventKind.ROUND_STARTED,
@@ -402,7 +473,6 @@ class Orchestrator:
             )
             peers_map = self.topology.assign_peers(list(self.agents.keys()))
             round_agents: Dict[str, AgentRoundRecord] = {}
-            start = time.perf_counter()
             soft_s = self.cfg.deadlines.soft_timeout_ms / 1000.0
             hard_s = self.cfg.deadlines.hard_timeout_ms / 1000.0
             min_agents = self.cfg.deadlines.min_agents
@@ -413,10 +483,17 @@ class Orchestrator:
                 peer_bundles[aid] = []
                 for p in assigned:
                     if p in current_solution:
-                        s, _ = enforce_size(current_solution[p], self.cfg.security.max_solution_size, label="peer_solution")
+                        s, _ = enforce_size(
+                            current_solution[p],
+                            self.cfg.security.max_solution_size,
+                            label="peer_solution",
+                        )
                         peer_bundles[aid].append(s)
 
-            max_workers = min(len(self.agents), self.cfg.budget.max_concurrent_agents or len(self.agents))
+            max_workers = min(
+                len(self.agents),
+                self.cfg.budget.max_concurrent_agents or len(self.agents),
+            )
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
                 crit_futs: Dict[concurrent.futures.Future[Any], str] = {}
                 for aid in self.agents.keys():
@@ -433,15 +510,27 @@ class Orchestrator:
                     fut = ex.submit(
                         self.agents[aid].critique_and_refine,
                         requirement_trunc,
-                        enforce_size(current_solution.get(aid, ""), self.cfg.security.max_solution_size, label="own_solution")[0],
+                        enforce_size(
+                            current_solution.get(aid, ""),
+                            self.cfg.security.max_solution_size,
+                            label="own_solution",
+                        )[0],
                         peer_bundles.get(aid, []),
                     )
                     crit_futs[fut] = aid
-                completed_raw, deadline_hit_soft, deadline_hit_hard, _remaining = self._deadline_manager.collect(
-                    crit_futs, soft_s=soft_s, hard_s=hard_s, min_agents=min_agents
+                completed_raw, deadline_hit_soft, deadline_hit_hard, _remaining = (
+                    self._deadline_manager.collect(
+                        crit_futs, soft_s=soft_s, hard_s=hard_s, min_agents=min_agents
+                    )
                 )
                 if deadline_hit_soft:
-                    log_event(self.logger, LogEvent.DEADLINE_SOFT, round=r, completed=len(completed_raw), min_agents=min_agents)
+                    log_event(
+                        self.logger,
+                        LogEvent.DEADLINE_SOFT,
+                        round=r,
+                        completed=len(completed_raw),
+                        min_agents=min_agents,
+                    )
                 if deadline_hit_hard:
                     log_event(self.logger, LogEvent.DEADLINE_HARD, round=r)
 
@@ -473,7 +562,9 @@ class Orchestrator:
                     peers_assigned = peers_map.get(aid, [])
                     peers_seen = list(peers_assigned)
                     if aid not in completed:
-                        self.score.record_keep(agent_id=aid, answer_id=current_answer_id[aid], round_idx=r)
+                        self.score.record_keep(
+                            agent_id=aid, answer_id=current_answer_id[aid], round_idx=r
+                        )
                         round_agents[aid] = AgentRoundRecord(
                             response=TranscriptResponse(
                                 agent_id=aid,
@@ -508,9 +599,16 @@ class Orchestrator:
                         current_solution[aid] = res["solution"]
                         current_answer_id[aid] = res["answer_id"]
                         self._record_answer(res["solution"])
-                        self.score.record_change(agent_id=aid, old_answer_id=old, new_answer_id=current_answer_id[aid], round_idx=r)
+                        self.score.record_change(
+                            agent_id=aid,
+                            old_answer_id=old,
+                            new_answer_id=current_answer_id[aid],
+                            round_idx=r,
+                        )
                     else:
-                        self.score.record_keep(agent_id=aid, answer_id=current_answer_id[aid], round_idx=r)
+                        self.score.record_keep(
+                            agent_id=aid, answer_id=current_answer_id[aid], round_idx=r
+                        )
                         res["decision"] = Decision.KEEP
                         res["changed"] = False
                         res["answer_id"] = current_answer_id[aid]
@@ -551,7 +649,8 @@ class Orchestrator:
 
             scores_round = self.score.get_all_scores()
             holders_round: Dict[str, List[str]] = {
-                ans: [aid for aid, curr in current_answer_id.items() if curr == ans] for ans in scores_round.keys()
+                ans: [aid for aid, curr in current_answer_id.items() if curr == ans]
+                for ans in scores_round.keys()
             }
             transcript.append(
                 RoundTranscript(
@@ -559,12 +658,16 @@ class Orchestrator:
                     type=RoundType.CRITIQUE,
                     agents=round_agents,
                     scores=scores_round,
-                    topology_info=self.topology.info() if self.cfg.output.include_topology_info else {},
+                    topology_info=self.topology.info()
+                    if self.cfg.output.include_topology_info
+                    else {},
                     deadline_hit_soft=deadline_hit_soft,
                     deadline_hit_hard=deadline_hit_hard,
                 )
             )
-            log_event(self.logger, LogEvent.ROUND_END, round=r, type=RoundType.CRITIQUE.value)
+            log_event(
+                self.logger, LogEvent.ROUND_END, round=r, type=RoundType.CRITIQUE.value
+            )
             self._emit(
                 RunEvent(
                     kind=RunEventKind.SCORES_UPDATED,
@@ -594,7 +697,12 @@ class Orchestrator:
                 break
         return early_stop_reason, transcript
 
-    def _compute_metrics(self, rounds: List[RoundTranscript], final_id: str, vresults: Dict[str, Dict[str, ValidationResult]]) -> Dict[str, float]:
+    def _compute_metrics(
+        self,
+        rounds: List[RoundTranscript],
+        final_id: str,
+        vresults: Dict[str, Dict[str, ValidationResult]],
+    ) -> Dict[str, float]:
         num_rounds = max(0, len(rounds) - 1)
         num_agents = len(self.agents)
         deadline_soft_hits = sum(1 for r in rounds if r.deadline_hit_soft)
@@ -608,7 +716,9 @@ class Orchestrator:
         final_agreement = 0.0
         if rounds:
             last = rounds[-1]
-            final_agreement = sum(1 for rec in last.agents.values() if rec.response.answer_id == final_id) / float(num_agents or 1)
+            final_agreement = sum(
+                1 for rec in last.agents.values() if rec.response.answer_id == final_id
+            ) / float(num_agents or 1)
         scores = self.score.get_all_scores().values()
         if scores:
             smin, smax = min(scores), max(scores)
@@ -616,7 +726,7 @@ class Orchestrator:
         else:
             smin = smax = smean = 0.0
         v_final = vresults.get(final_id, {})
-        v_pass = sum(1 for v in v_final.values() if getattr(v, 'passed', False))
+        v_pass = sum(1 for v in v_final.values() if getattr(v, "passed", False))
         v_total = max(1, len(v_final))
         return {
             "num_rounds": float(num_rounds),

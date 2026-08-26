@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -52,7 +51,11 @@ def test_live_run_websocket(tmp_path: Path):
             {"id": "a2", "type": "api_live"},
         ],
         "deadlines": {"soft_timeout_ms": 50, "hard_timeout_ms": 100, "min_agents": 2},
-        "budget": {"max_total_time_sec": 10, "max_round_time_sec": 2, "max_agent_time_sec": 2},
+        "budget": {
+            "max_total_time_sec": 10,
+            "max_round_time_sec": 2,
+            "max_agent_time_sec": 2,
+        },
     }
 
     r = client.post(
@@ -71,12 +74,20 @@ def test_live_run_websocket(tmp_path: Path):
             kind = event.get("kind")
             if kind:
                 kinds.append(kind)
-            if kind in {RunEventKind.RUN_COMPLETED.value, RunEventKind.RUN_FAILED.value, RunEventKind.RUN_BUDGET_EXCEEDED.value}:
+            if kind in {
+                RunEventKind.RUN_COMPLETED.value,
+                RunEventKind.RUN_FAILED.value,
+                RunEventKind.RUN_BUDGET_EXCEEDED.value,
+            }:
                 break
 
     assert RunEventKind.RUN_STARTED.value in kinds
     assert any(
-        k in {RunEventKind.RUN_COMPLETED.value, RunEventKind.RUN_FAILED.value, RunEventKind.RUN_BUDGET_EXCEEDED.value}
+        k
+        in {
+            RunEventKind.RUN_COMPLETED.value,
+            RunEventKind.RUN_FAILED.value,
+            RunEventKind.RUN_BUDGET_EXCEEDED.value,
+        }
         for k in kinds
     )
-

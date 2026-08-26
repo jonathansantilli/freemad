@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 from freemad.types import (
@@ -145,13 +145,31 @@ class WorkItem:
             task_id=str(data.get("task_id", "")).strip(),
             title=str(data.get("title", "")).strip(),
             description=str(data.get("description", "")).strip(),
-            depends_on=tuple(str(item) for item in list(data.get("depends_on", []) or [])),
-            write_scope=tuple(str(item) for item in list(data.get("write_scope", []) or [])),
-            verification_scope=tuple(str(item) for item in list(data.get("verification_scope", []) or [])),
+            depends_on=tuple(
+                str(item) for item in list(data.get("depends_on", []) or [])
+            ),
+            write_scope=tuple(
+                str(item) for item in list(data.get("write_scope", []) or [])
+            ),
+            verification_scope=tuple(
+                str(item) for item in list(data.get("verification_scope", []) or [])
+            ),
             status=WorkItemStatus(str(data.get("status", WorkItemStatus.QUEUED.value))),
-            author_agent_id=(str(data["author_agent_id"]).strip() if data.get("author_agent_id") else None),
-            reviewer_agent_id=(str(data["reviewer_agent_id"]).strip() if data.get("reviewer_agent_id") else None),
-            arbiter_agent_id=(str(data["arbiter_agent_id"]).strip() if data.get("arbiter_agent_id") else None),
+            author_agent_id=(
+                str(data["author_agent_id"]).strip()
+                if data.get("author_agent_id")
+                else None
+            ),
+            reviewer_agent_id=(
+                str(data["reviewer_agent_id"]).strip()
+                if data.get("reviewer_agent_id")
+                else None
+            ),
+            arbiter_agent_id=(
+                str(data["arbiter_agent_id"]).strip()
+                if data.get("arbiter_agent_id")
+                else None
+            ),
         )
 
 
@@ -302,8 +320,18 @@ class TaskResponse:
             ),
             findings=tuple(str(item) for item in list(data.get("findings", []) or [])),
             commands=tuple(str(item) for item in list(data.get("commands", []) or [])),
-            artifact_ids=tuple(str(item) for item in list(data.get("artifact_ids", []) or [])),
-            work_items=tuple(WorkItem.from_dict(item) for item in list(data.get("work_items", []) or [])),
-            writes=tuple(FileWrite.from_dict(item) for item in list(data.get("writes", []) or [])),
-            sources=tuple(SourceRecord.from_dict(item) for item in list(data.get("sources", []) or [])),
+            artifact_ids=tuple(
+                str(item) for item in list(data.get("artifact_ids", []) or [])
+            ),
+            work_items=tuple(
+                WorkItem.from_dict(item)
+                for item in list(data.get("work_items", []) or [])
+            ),
+            writes=tuple(
+                FileWrite.from_dict(item) for item in list(data.get("writes", []) or [])
+            ),
+            sources=tuple(
+                SourceRecord.from_dict(item)
+                for item in list(data.get("sources", []) or [])
+            ),
         )

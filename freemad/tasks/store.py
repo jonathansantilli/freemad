@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 from freemad.task_events import TaskEvent
 from freemad.tasks.models import ArtifactRef, StageAttempt, TaskSnapshot, WorkItem
@@ -100,7 +100,9 @@ class TaskStore:
         with self._lock:
             self._conn.close()
 
-    def create_task(self, goal: str, task_type: TaskType, workspace_root: str) -> TaskSnapshot:
+    def create_task(
+        self, goal: str, task_type: TaskType, workspace_root: str
+    ) -> TaskSnapshot:
         task = TaskSnapshot(
             task_id=str(uuid.uuid4()),
             goal=goal,
@@ -119,7 +121,9 @@ class TaskStore:
                 "SELECT created_at_ms FROM tasks WHERE task_id = ?",
                 (task.task_id,),
             ).fetchone()
-            created_at_ms = int(existing["created_at_ms"]) if existing is not None else now_ms
+            created_at_ms = (
+                int(existing["created_at_ms"]) if existing is not None else now_ms
+            )
             self._conn.execute(
                 """
                 INSERT INTO tasks (
@@ -187,9 +191,13 @@ class TaskStore:
                     event.role.value if event.role is not None else None,
                     event.status.value if event.status is not None else None,
                     event.artifact_id,
-                    event.artifact_kind.value if event.artifact_kind is not None else None,
+                    event.artifact_kind.value
+                    if event.artifact_kind is not None
+                    else None,
                     event.work_item_id,
-                    event.review_decision.value if event.review_decision is not None else None,
+                    event.review_decision.value
+                    if event.review_decision is not None
+                    else None,
                     event.message,
                     event.error,
                 ),
@@ -267,7 +275,9 @@ class TaskStore:
 
     def save_work_items(self, task_id: str, work_items: Sequence[WorkItem]) -> None:
         with self._lock:
-            self._conn.execute("DELETE FROM task_work_items WHERE task_id = ?", (task_id,))
+            self._conn.execute(
+                "DELETE FROM task_work_items WHERE task_id = ?", (task_id,)
+            )
             for work_item in work_items:
                 self._conn.execute(
                     """
@@ -348,7 +358,9 @@ class TaskStore:
             iteration=int(row["iteration"]),
             stage_attempts=tuple(
                 self._stage_attempt_from_dict(item)
-                for item in list(json.loads(str(row["stage_attempts_json"]) or "[]") or [])
+                for item in list(
+                    json.loads(str(row["stage_attempts_json"]) or "[]") or []
+                )
             ),
             artifacts=tuple(self.list_artifacts(str(row["task_id"]))),
             work_items=tuple(self.list_work_items(str(row["task_id"]))),
@@ -362,12 +374,20 @@ class TaskStore:
             ts_ms=int(row["ts_ms"]),
             stage=(TaskStage(str(row["stage"])) if row["stage"] is not None else None),
             role=(TaskRole(str(row["role"])) if row["role"] is not None else None),
-            status=(TaskStatus(str(row["status"])) if row["status"] is not None else None),
-            artifact_id=(str(row["artifact_id"]) if row["artifact_id"] is not None else None),
-            artifact_kind=(
-                ArtifactKind(str(row["artifact_kind"])) if row["artifact_kind"] is not None else None
+            status=(
+                TaskStatus(str(row["status"])) if row["status"] is not None else None
             ),
-            work_item_id=(str(row["work_item_id"]) if row["work_item_id"] is not None else None),
+            artifact_id=(
+                str(row["artifact_id"]) if row["artifact_id"] is not None else None
+            ),
+            artifact_kind=(
+                ArtifactKind(str(row["artifact_kind"]))
+                if row["artifact_kind"] is not None
+                else None
+            ),
+            work_item_id=(
+                str(row["work_item_id"]) if row["work_item_id"] is not None else None
+            ),
             review_decision=(
                 ReviewDecision(str(row["review_decision"]))
                 if row["review_decision"] is not None
@@ -388,7 +408,10 @@ class TaskStore:
             created_ts_ms=int(row["created_ts_ms"]),
             summary=str(row["summary"]),
             parent_artifact_ids=tuple(
-                str(item) for item in list(json.loads(str(row["parent_artifact_ids_json"]) or "[]") or [])
+                str(item)
+                for item in list(
+                    json.loads(str(row["parent_artifact_ids_json"]) or "[]") or []
+                )
             ),
             role=(TaskRole(str(row["role"])) if row["role"] is not None else None),
         )
@@ -399,15 +422,36 @@ class TaskStore:
             task_id=str(row["task_id"]),
             title=str(row["title"]),
             description=str(row["description"]),
-            depends_on=tuple(str(item) for item in list(json.loads(str(row["depends_on_json"]) or "[]") or [])),
-            write_scope=tuple(str(item) for item in list(json.loads(str(row["write_scope_json"]) or "[]") or [])),
+            depends_on=tuple(
+                str(item)
+                for item in list(json.loads(str(row["depends_on_json"]) or "[]") or [])
+            ),
+            write_scope=tuple(
+                str(item)
+                for item in list(json.loads(str(row["write_scope_json"]) or "[]") or [])
+            ),
             verification_scope=tuple(
-                str(item) for item in list(json.loads(str(row["verification_scope_json"]) or "[]") or [])
+                str(item)
+                for item in list(
+                    json.loads(str(row["verification_scope_json"]) or "[]") or []
+                )
             ),
             status=WorkItemStatus(str(row["status"])),
-            author_agent_id=(str(row["author_agent_id"]) if row["author_agent_id"] is not None else None),
-            reviewer_agent_id=(str(row["reviewer_agent_id"]) if row["reviewer_agent_id"] is not None else None),
-            arbiter_agent_id=(str(row["arbiter_agent_id"]) if row["arbiter_agent_id"] is not None else None),
+            author_agent_id=(
+                str(row["author_agent_id"])
+                if row["author_agent_id"] is not None
+                else None
+            ),
+            reviewer_agent_id=(
+                str(row["reviewer_agent_id"])
+                if row["reviewer_agent_id"] is not None
+                else None
+            ),
+            arbiter_agent_id=(
+                str(row["arbiter_agent_id"])
+                if row["arbiter_agent_id"] is not None
+                else None
+            ),
         )
 
     def _stage_attempt_from_dict(self, data: dict[str, Any]) -> StageAttempt:
@@ -416,9 +460,21 @@ class TaskStore:
             attempt_index=int(data["attempt_index"]),
             proposer_agent_id=str(data["proposer_agent_id"]),
             reviewer_agent_id=str(data["reviewer_agent_id"]),
-            arbiter_agent_id=(str(data["arbiter_agent_id"]) if data.get("arbiter_agent_id") is not None else None),
-            input_artifact_ids=tuple(str(item) for item in list(data.get("input_artifact_ids", []) or [])),
-            output_artifact_ids=tuple(str(item) for item in list(data.get("output_artifact_ids", []) or [])),
-            outcome=(TaskOutcome(str(data["outcome"])) if data.get("outcome") is not None else None),
+            arbiter_agent_id=(
+                str(data["arbiter_agent_id"])
+                if data.get("arbiter_agent_id") is not None
+                else None
+            ),
+            input_artifact_ids=tuple(
+                str(item) for item in list(data.get("input_artifact_ids", []) or [])
+            ),
+            output_artifact_ids=tuple(
+                str(item) for item in list(data.get("output_artifact_ids", []) or [])
+            ),
+            outcome=(
+                TaskOutcome(str(data["outcome"]))
+                if data.get("outcome") is not None
+                else None
+            ),
             decision_reason=str(data.get("decision_reason", "")),
         )

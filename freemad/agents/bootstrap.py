@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Bootstrap agent registrations.
 
 Importing this module registers built-in adapters with the registry.
 """
+
+from __future__ import annotations
 
 from .registry import register_agent
 from .claude_agent import ClaudeCodeAgent

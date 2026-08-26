@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from freemad.dashboard.app import create_app, DashboardConfig
-from freemad.dashboard.live_manager import LiveRunManager, LiveRunState, LiveRunInfo
-from freemad.run_events import RunEvent, RunEventKind
+from freemad.dashboard.app import create_app, DashboardConfig  # noqa: E402 - after the sys.path bootstrap above
+from freemad.dashboard.live_manager import LiveRunManager, LiveRunState, LiveRunInfo  # noqa: E402 - after the sys.path bootstrap above
+from freemad.run_events import RunEvent  # noqa: E402 - after the sys.path bootstrap above
 
 
 def test_websocket_missing_run_returns_1008(tmp_path: Path) -> None:
@@ -36,7 +36,9 @@ def test_websocket_heartbeat_on_idle(tmp_path: Path) -> None:
 
     # make get raise queue.Empty immediately to trigger heartbeat
     q.get = _raise_empty  # type: ignore[method-assign,assignment]
-    mgr._runs[run_id] = LiveRunState(info=LiveRunInfo(run_id=run_id, completed=False), queue=q)  # type: ignore[attr-defined]
+    mgr._runs[run_id] = LiveRunState(
+        info=LiveRunInfo(run_id=run_id, completed=False), queue=q
+    )  # type: ignore[attr-defined]
 
     client = TestClient(app)
     with client.websocket_connect(f"/ws/live-runs/{run_id}") as ws:

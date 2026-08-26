@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-import tempfile
 
-from freemad import Config, ConfigError
+from freemad import Config
 from freemad.config import load_config
-from freemad.utils.logger import get_logger, log_event, RedactionFilter
+from freemad.utils.logger import get_logger, log_event
 from freemad.types import LogEvent
 
 

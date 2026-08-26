@@ -133,8 +133,6 @@ class TestOrchestrator(unittest.TestCase):
         scores = out["scores"]
         self.assertEqual(len(scores), 2)
         # A1 answer should have higher normalized score than A2's original
-        # find ids
-        ans_ids = list(scores.keys())
         # Determine which is adopted (both agents end on the same)
         # The adopted answer has 2 contributors and higher raw, but normalized should still exceed the penalized old answer
         adopted_score = max(scores.values())
@@ -146,10 +144,24 @@ class TestOrchestrator(unittest.TestCase):
         cfg = load_config(
             overrides={
                 "agents": [
-                    {"id": "fast", "type": "mock_delay_keep", "config": {}, "timeout": 5},
-                    {"id": "slow", "type": "mock_delay_keep", "config": {}, "timeout": 5},
+                    {
+                        "id": "fast",
+                        "type": "mock_delay_keep",
+                        "config": {},
+                        "timeout": 5,
+                    },
+                    {
+                        "id": "slow",
+                        "type": "mock_delay_keep",
+                        "config": {},
+                        "timeout": 5,
+                    },
                 ],
-                "deadlines": {"soft_timeout_ms": 100, "hard_timeout_ms": 300, "min_agents": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 100,
+                    "hard_timeout_ms": 300,
+                    "min_agents": 2,
+                },
             }
         )
         # inject delays by modifying the constructed agents after factory
@@ -158,7 +170,9 @@ class TestOrchestrator(unittest.TestCase):
         orch.agents["slow"].delay_s = 0.15  # type: ignore[attr-defined]
         out = orch.run("do Y", max_rounds=1)
         crit = out["transcript"][1]
-        self.assertTrue(crit["deadline_hit_soft"])  # fast done, slow not => quorum unmet at soft
+        self.assertTrue(
+            crit["deadline_hit_soft"]
+        )  # fast done, slow not => quorum unmet at soft
         # Ensure hard not hit
         self.assertFalse(crit["deadline_hit_hard"])  # completes by 300ms
 
@@ -170,8 +184,16 @@ class TestOrchestrator(unittest.TestCase):
                     {"id": "a1", "type": "mock_keep"},
                     {"id": "a2", "type": "mock_keep"},
                 ],
-                "deadlines": {"soft_timeout_ms": 50, "hard_timeout_ms": 100, "min_agents": 2},
-                "budget": {"max_total_time_sec": 10, "max_round_time_sec": 2, "max_agent_time_sec": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 50,
+                    "hard_timeout_ms": 100,
+                    "min_agents": 2,
+                },
+                "budget": {
+                    "max_total_time_sec": 10,
+                    "max_round_time_sec": 2,
+                    "max_agent_time_sec": 2,
+                },
             }
         )
         orch = Orchestrator(cfg)
@@ -188,8 +210,16 @@ class TestOrchestrator(unittest.TestCase):
                     {"id": "slow2", "type": "mock_delay_keep", "timeout": 5},
                 ],
                 # Deadlines permit the work; budget causes the stop
-                "deadlines": {"soft_timeout_ms": 200, "hard_timeout_ms": 400, "min_agents": 2},
-                "budget": {"max_total_time_sec": 10, "max_round_time_sec": 0.02, "max_agent_time_sec": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 200,
+                    "hard_timeout_ms": 400,
+                    "min_agents": 2,
+                },
+                "budget": {
+                    "max_total_time_sec": 10,
+                    "max_round_time_sec": 0.02,
+                    "max_agent_time_sec": 2,
+                },
             }
         )
         orch = Orchestrator(cfg)

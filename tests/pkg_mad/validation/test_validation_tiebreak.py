@@ -39,8 +39,14 @@ class TestValidationTiebreak(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # we bind two different types to allow distinct config entries
-        register_agent("mock_static1", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "SAFE_ANSWER"))  # type: ignore[arg-type]
-        register_agent("mock_static2", lambda cfg, acfg: MockStaticAgent(cfg, acfg, "LEAK sk-TEST-KEY"))  # type: ignore[arg-type]
+        register_agent(
+            "mock_static1",
+            lambda cfg, acfg: MockStaticAgent(cfg, acfg, "SAFE_ANSWER"),  # type: ignore[arg-type]
+        )
+        register_agent(
+            "mock_static2",
+            lambda cfg, acfg: MockStaticAgent(cfg, acfg, "LEAK sk-TEST-KEY"),  # type: ignore[arg-type]
+        )
 
     def test_tie_broken_by_validator_confidence(self):
         # Equal scores: both keep; Security validator should penalize the one with key-like token
@@ -50,7 +56,11 @@ class TestValidationTiebreak(unittest.TestCase):
                     {"id": "safe", "type": "mock_static1"},
                     {"id": "leaky", "type": "mock_static2"},
                 ],
-                "deadlines": {"soft_timeout_ms": 100, "hard_timeout_ms": 200, "min_agents": 2},
+                "deadlines": {
+                    "soft_timeout_ms": 100,
+                    "hard_timeout_ms": 200,
+                    "min_agents": 2,
+                },
             }
         )
         orch = Orchestrator(cfg)
@@ -58,8 +68,6 @@ class TestValidationTiebreak(unittest.TestCase):
         # both answers exist; pick SAFE_ANSWER via higher validator confidence
         self.assertIn("validator_confidence", out)
         confidences = out["validator_confidence"]
-        # Identify which answer_id is safe
-        ans_to_text = {t["agents"][aid]["response"]["answer_id"]: t["agents"][aid]["response"]["solution"] for t in out["transcript"] if t["round"] == 0 for aid in t["agents"]}
         # final must be SAFE_ANSWER
         final_id = out["final_answer_id"]
         self.assertEqual(out["final_solution"], "SAFE_ANSWER")
