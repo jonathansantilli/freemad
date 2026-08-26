@@ -644,6 +644,29 @@ Resolution, per Jonathan's direction:
   canonical skills are and that the pointers are pointers.
 - **Both directories gitignored.** Skills are local tooling configuration, not source.
 
+### Round 14 — committed, and what the clean-export check caught (2026-08-26)
+
+Three commits on `main`:
+
+- `998e3bd chore(tooling): make the commit gate real`
+- `3040ebe feat(evolve): goal-directed optimisation runtime with deterministic judge`
+- `f8ac05c test(evolve): stop assuming the venv is on PATH`
+
+The third exists because of a check worth making a habit: after committing, export
+`HEAD` to a clean directory and run the suite there, with the interpreter invoked
+directly rather than through `poetry run`. One test failed that passed in the working
+tree on byte-identical code. Twenty judge-stage commands in the fixtures were a bare
+`python`, resolvable only because `poetry run` puts the venv on PATH. Under any other
+runner every judge stage failed to start, the baseline failed its own gate, and the
+`v0`-tag test — the only one asserting on a side effect of a *successful* baseline —
+caught it. Fixed with `sys.executable`, except where that is wrong: container tests keep
+the image's own `python` (the host path does not exist inside), and worker-policy tests
+use `python3` (the allowlist matches `cmd[0]` by name). The comparison harness in
+`examples/` carried the same assumption.
+
+Final verification: a clean export of `f8ac05c`, full suite, PATH restricted to
+`/usr/bin:/bin` — passes.
+
 ### Process notes
 
 - I picked the `security-auditor` agent type for the security lens; its toolset is
