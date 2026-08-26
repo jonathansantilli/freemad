@@ -733,6 +733,38 @@ agent's `cli_command` and its allowlist. CI passes it only because `setup-python
 `python` on PATH. Same fix as the health test, `sys.executable`; it passes on 3.13 with
 no venv on PATH, on 3.10, and under `poetry run`, and stays skipped without `SMOKE=1`.
 
+### Round 16 — the first push, and what CI's 3.11 lane caught (2026-08-26)
+
+Pushed `main` (nine commits, `52dd467..e2aeab3`). CodeQL, SBOM, Scorecards, Release
+Drafter and the `smoke` job went green; of the four `tests` lanes, 3.12 and 3.13 passed,
+3.11 failed and 3.10 was cancelled by fail-fast. The failure:
+`test_kill9_mid_variation_costs_at_most_one_iteration — variation worktree never
+appeared`, and nothing else in the log — the test read one line from the runner's stdout
+pipe and never looked at the runner again.
+
+Ruling things out first: the 3.11 lane resolved dependency versions identical to 3.13's;
+a `uv`-built 3.11 environment passed the test 3/3 and the full suite; the runner writes
+37 bytes before the worktree appears, so an undrained pipe was not what stalled it. Then
+the measurement that explained it. With the runner's instant fake worker an iteration is
+rejected as "no changes" the moment it starts, and the `it1` worktree exists for **62–69
+ms** — 1 ms polling, three runs, the same under a coverage tracer. The test polled every
+50 ms. That margin loses a race on a loaded two-vCPU runner, and it means the kill had
+only ever landed "mid-variation" by luck: the "slow" config raised the worker's timeout
+without making the worker slow.
+
+`3a10d31`: the runner's worker holds `act()` open for a minute when the test sets
+`FREEMAD_TEST_ACT_SLEEP`, so the worktree persists until the kill lands inside iteration
+1 — the event trail at kill time ends at `iteration_started`. The runner's output goes
+to files rather than pipes nobody drains, both waits are bounded (`readline()` on the
+pipe was not), and a failed wait reports the runner's exit state, its output and the
+run's event trail. 3/3 on each of 3.10, 3.11 and 3.13.
+
+A third lesson for this log: a test that fails on one lane is a test with a timing
+window until proven otherwise. Measure the window before blaming the lane.
+
+CI for `3a10d31`: all four `tests` lanes, `smoke`, CodeQL, SBOM and Scorecards green;
+coverage 88–89% on every lane.
+
 ### Process notes
 
 - I picked the `security-auditor` agent type for the security lens; its toolset is
