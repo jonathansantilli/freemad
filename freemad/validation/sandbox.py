@@ -47,10 +47,17 @@ class SandboxValidator:
         glb = {"__builtins__": SAFE_BUILTINS}
         loc: Dict[str, object] = {}
         try:
-            exec(code, glb, loc)
+            # Opt-in only (enable_sandbox defaults to False). A substring blocklist over
+            # a restricted-builtins exec is NOT a security boundary: anything that can
+            # reach this code path can escape it. Documented in SECURITY.md.
+            exec(code, glb, loc)  # nosec B102
             return ValidationResult(passed=True, confidence=0.8)
         except Exception as e:  # pragma: no cover - error path unit-tested
-            return ValidationResult(passed=False, confidence=0.4, errors=[f"runtime: {e.__class__.__name__}: {e}"])
+            return ValidationResult(
+                passed=False,
+                confidence=0.4,
+                errors=[f"runtime: {e.__class__.__name__}: {e}"],
+            )
 
     def validate(self, answer_id: str, text: str) -> ValidationResult:
         if not self.enabled:
@@ -58,13 +65,19 @@ class SandboxValidator:
             return ValidationResult(passed=True, confidence=0.5)
         code = canonicalize_solution(text)
         if not code:
-            return ValidationResult(passed=False, confidence=0.3, errors=["empty solution"])
+            return ValidationResult(
+                passed=False, confidence=0.3, errors=["empty solution"]
+            )
         if any(tok in code for tok in UNSAFE_TOKENS):
-            return ValidationResult(passed=False, confidence=0.2, errors=["unsafe code patterns detected"])
+            return ValidationResult(
+                passed=False, confidence=0.2, errors=["unsafe code patterns detected"]
+            )
         # Run with a hard timeout via thread executor
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             fut = ex.submit(self._run_code, code)
             try:
                 return fut.result(timeout=max(0.001, self.timeout_ms / 1000.0))
             except concurrent.futures.TimeoutError:
-                return ValidationResult(passed=False, confidence=0.2, errors=["sandbox timeout"])
+                return ValidationResult(
+                    passed=False, confidence=0.2, errors=["sandbox timeout"]
+                )

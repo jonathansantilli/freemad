@@ -17,5 +17,8 @@ We take security seriously. Please follow these guidelines to report vulnerabili
 
 ## Hardening Notes
 - Subprocesses are allowlisted and run with `shell=False`.
-- Sandbox validator is disabled by default; when enabled, it runs with timeouts and restricted capabilities.
+- Sandbox validator is disabled by default. When enabled it runs candidate code through
+  `exec` with restricted builtins, a substring blocklist and a timeout. **This is not a
+  security boundary** — treat it as a smoke check for trusted inputs only. For the evolve
+  runtime, `judge.container.enabled` is the real isolation layer.
 - Avoid sharing transcripts that may contain sensitive content; enable redaction patterns in config.

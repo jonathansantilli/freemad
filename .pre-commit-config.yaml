@@ -1,9 +1,7 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
-        language_version: python3
+  # ruff-format is the single formatter. Running black alongside it ping-ponged: black
+  # reflows a long `except X as e:  # comment` into a parenthesised form, ruff-format
+  # reflows it back, and any file with that construct failed the gate on every commit.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
@@ -22,5 +20,9 @@ repos:
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ["-q", "-r", "mad"]
-
+        # -ll: gate on Medium and above. This project is a subprocess orchestrator, so
+        # the ~34 Low hits (B404/B603) are its whole purpose, not findings.
+        # Tests are excluded: a fake "/tmp/wt" path in an argv-construction test is
+        # not a hardcoded temp directory.
+        args: ["-q", "-ll", "-r", "freemad"]
+        exclude: ^tests/

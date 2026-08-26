@@ -9,12 +9,11 @@ install:
 	poetry install
 
 fmt:
-	$(PY) ruff format
-	$(PY) black mad tests || true
+	$(PY) ruff format freemad tests
 
 lint:
-	$(PY) ruff check mad tests
-	$(PY) bandit -q -r mad || true
+	$(PY) ruff check freemad tests
+	$(PY) bandit -q -ll -r freemad
 
 type:
 	$(PY) mypy .
@@ -23,7 +22,7 @@ test:
 	$(PY) pytest -q
 
 cov:
-	$(PY) pytest -q --cov=mad --cov-report=term --cov-report=xml
+	$(PY) pytest -q --cov=freemad --cov-report=term --cov-report=xml
 
 precommit:
 	$(PY) pre-commit run --all-files
