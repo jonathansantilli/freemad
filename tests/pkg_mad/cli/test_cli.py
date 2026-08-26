@@ -15,10 +15,20 @@ from freemad import compute_answer_id
 class _CliMockAgent(Agent):
     def generate(self, requirement: str) -> AgentResponse:
         sol = f"CLI_{self.agent_cfg.id}"
-        return AgentResponse(self.agent_cfg.id, sol, "r", compute_answer_id(sol), Metadata())
+        return AgentResponse(
+            self.agent_cfg.id, sol, "r", compute_answer_id(sol), Metadata()
+        )
 
     def critique_and_refine(self, requirement: str, own_response: str, peer_responses):
-        return CritiqueResponse(self.agent_cfg.id, Decision.KEEP, False, own_response, "r", compute_answer_id(own_response), Metadata())
+        return CritiqueResponse(
+            self.agent_cfg.id,
+            Decision.KEEP,
+            False,
+            own_response,
+            "r",
+            compute_answer_id(own_response),
+            Metadata(),
+        )
 
 
 class TestCLI(unittest.TestCase):
@@ -39,7 +49,12 @@ class TestCLI(unittest.TestCase):
     def test_version(self):
         code, out = self.capture(["--version"])
         self.assertEqual(code, 0)
-        self.assertIn("0.1.0", out)
+        import freemad
+
+        self.assertEqual(out.strip(), freemad.__version__)
+        self.assertNotIn(
+            "unknown", out, "the package is installed; metadata must resolve"
+        )
 
     def test_health(self):
         # Supply a config via overrides by writing a minimal JSON to stdin? Instead use default config and just run health.
@@ -58,12 +73,17 @@ class TestCLI(unittest.TestCase):
                 "output": {"save_transcript": False},
             }
             cfg_path.write_text(json.dumps(data), encoding="utf-8")
-            code, out = self.capture([
-                "do something",
-                "--rounds", "0",
-                "--format", "json",
-                "--config", str(cfg_path),
-            ])
+            code, out = self.capture(
+                [
+                    "do something",
+                    "--rounds",
+                    "0",
+                    "--format",
+                    "json",
+                    "--config",
+                    str(cfg_path),
+                ]
+            )
         self.assertEqual(code, 0)
         self.assertIn("FREE-MAD result", out)
         self.assertIn("Final score:", out)

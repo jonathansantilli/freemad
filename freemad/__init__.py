@@ -6,7 +6,12 @@ This module re-exports commonly used classes/functions so imports like
 `from freemad import X` continue to work after the namespace rename.
 """
 
-__version__ = "0.2.0"
+from importlib.metadata import PackageNotFoundError, version as _dist_version  # noqa: E402
+
+try:
+    __version__ = _dist_version("freemad")
+except PackageNotFoundError:  # running from a source tree that was never installed
+    __version__ = "0.0.0+unknown"
 
 # Config
 from freemad.config import (  # noqa: E402

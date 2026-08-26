@@ -29,7 +29,7 @@ from freemad.types import (
 from freemad.utils.transcript import save_transcript
 
 
-PACKAGE_VERSION = "0.1.0"
+from freemad import __version__ as PACKAGE_VERSION
 
 
 def _task_payload(orch: TaskOrchestrator, task_id: str) -> dict[str, Any]:
