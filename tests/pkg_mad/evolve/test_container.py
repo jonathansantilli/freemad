@@ -11,6 +11,8 @@ runtime is reachable, so CI without Docker stays green.
 
 from __future__ import annotations
 
+import sys
+
 import os
 import shutil
 import subprocess
@@ -132,7 +134,7 @@ class TestConfigValidation:
                         "stages": [
                             {
                                 "name": "b",
-                                "command": "python b.py",
+                                "command": f"{sys.executable} b.py",
                                 "parse": "json_stdout",
                                 "provides": ["s"],
                             }

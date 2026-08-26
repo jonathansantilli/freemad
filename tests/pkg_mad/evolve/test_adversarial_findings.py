@@ -6,6 +6,8 @@ a path-escape, and epsilon-50 made measurement noise look like progress.
 
 from __future__ import annotations
 
+import sys
+
 import subprocess
 from pathlib import Path
 
@@ -53,7 +55,7 @@ def _cfg(repo: Path, tmp_path: Path, protected):
                     "stages": [
                         {
                             "name": "b",
-                            "command": "python3 bench.py",
+                            "command": f"{sys.executable} bench.py",
                             "parse": "json_stdout",
                             "provides": ["s"],
                         }

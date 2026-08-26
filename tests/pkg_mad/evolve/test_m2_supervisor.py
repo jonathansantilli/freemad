@@ -75,12 +75,12 @@ def m2_config(repo: Path, tmp_path: Path, **evolve_overrides):
             "stages": [
                 {
                     "name": "tests",
-                    "command": "python -m pytest tests -q",
+                    "command": f"{sys.executable} -m pytest tests -q",
                     "timeout_sec": 60,
                 },
                 {
                     "name": "bench",
-                    "command": "python bench.py",
+                    "command": f"{sys.executable} bench.py",
                     "timeout_sec": 60,
                     "parse": "json_stdout",
                     "provides": ["ops_per_sec"],

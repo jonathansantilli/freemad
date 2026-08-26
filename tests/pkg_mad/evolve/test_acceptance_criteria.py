@@ -304,7 +304,7 @@ def test_real_sigkill_mid_judge_resumes(tmp_path):
                         "stages": [
                             {
                                 "name": "bench",
-                                "command": "python3 bench.py",
+                                "command": f"{sys.executable} bench.py",
                                 "timeout_sec": 120,
                                 "parse": "json_stdout",
                                 "provides": ["ops_per_sec"],
@@ -624,7 +624,7 @@ def test_validate_warns_when_a_debate_cannot_fit_its_budget(tmp_path):
                         "stages": [
                             {
                                 "name": "b",
-                                "command": "python3 b.py",
+                                "command": f"{sys.executable} b.py",
                                 "parse": "json_stdout",
                                 "provides": ["s"],
                             }

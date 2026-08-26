@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import json
 from pathlib import Path
 
@@ -39,12 +41,12 @@ def _write_config(cfg_path: Path, repo: Path, store: Path, **judge_extra) -> Pat
         "stages": [
             {
                 "name": "tests",
-                "command": "python -m pytest tests -q",
+                "command": f"{sys.executable} -m pytest tests -q",
                 "timeout_sec": 60,
             },
             {
                 "name": "bench",
-                "command": "python bench.py",
+                "command": f"{sys.executable} bench.py",
                 "timeout_sec": 60,
                 "parse": "json_stdout",
                 "provides": ["ops_per_sec"],
@@ -105,14 +107,14 @@ class TestValidate:
             stages=[
                 {
                     "name": "bench",
-                    "command": "python bench.py",
+                    "command": f"{sys.executable} bench.py",
                     "timeout_sec": 60,
                     "parse": "json_stdout",
                     "provides": ["ops_per_sec"],
                 },
                 {
                     "name": "tests",
-                    "command": "python -m pytest tests -q",
+                    "command": f"{sys.executable} -m pytest tests -q",
                     "timeout_sec": 60,
                 },
             ],

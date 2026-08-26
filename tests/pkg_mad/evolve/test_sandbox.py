@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from pathlib import Path
 
 import pytest
@@ -115,7 +117,7 @@ class TestJudgeIsScrubbed:
     def test_stage_subprocess_cannot_read_a_secret(self, tmp_path, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-leak-me")
         (tmp_path / "probe.py").write_text(PROBE)
-        cfg = _judge_config(tmp_path, "python probe.py")
+        cfg = _judge_config(tmp_path, f"{sys.executable} probe.py")
 
         verdict = Judge(cfg).judge_worktree(tmp_path)
 
@@ -127,7 +129,9 @@ class TestJudgeIsScrubbed:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-leak-me")
         (tmp_path / "probe.py").write_text(PROBE)
         cfg = _judge_config(
-            tmp_path, "python probe.py", env_passthrough=["ANTHROPIC_API_KEY"]
+            tmp_path,
+            f"{sys.executable} probe.py",
+            env_passthrough=["ANTHROPIC_API_KEY"],
         )
 
         verdict = Judge(cfg).judge_worktree(tmp_path)
@@ -143,7 +147,7 @@ class TestStageCommandSplitting:
             "import json, sys\n"
             'print(json.dumps({"components": {"seen": float(len(sys.argv) - 1)}}))\n'
         )
-        cfg = _judge_config(tmp_path, 'python echo_args.py -k "not slow"')
+        cfg = _judge_config(tmp_path, f'{sys.executable} echo_args.py -k "not slow"')
 
         verdict = Judge(cfg).judge_worktree(tmp_path)
 
@@ -169,13 +173,13 @@ class TestWorkerCommandsAreScrubbed:
                 "task": {
                     "tool_policy": {
                         "allow_local_commands": True,
-                        "allowed_local_commands": ["python"],
+                        "allowed_local_commands": ["python3"],
                     }
                 },
             }
         )
 
-        run_commands_policy(cfg, ("python leak.py",), tmp_path)
+        run_commands_policy(cfg, ("python3 leak.py",), tmp_path)
 
         assert (tmp_path / "leaked.txt").read_text() == ""
 
@@ -186,11 +190,13 @@ class TestEnvPassthroughValidation:
     )
     def test_rejects_names_that_are_not_variables(self, tmp_path, bad):
         with pytest.raises(ConfigError, match="env_passthrough"):
-            _judge_config(tmp_path, "python probe.py", env_passthrough=[bad])
+            _judge_config(tmp_path, f"{sys.executable} probe.py", env_passthrough=[bad])
 
     def test_rejects_duplicates(self, tmp_path):
         with pytest.raises(ConfigError, match="unique"):
-            _judge_config(tmp_path, "python probe.py", env_passthrough=["CI", "CI"])
+            _judge_config(
+                tmp_path, f"{sys.executable} probe.py", env_passthrough=["CI", "CI"]
+            )
 
 
 # --------------------------------------------------------------------------------
@@ -207,7 +213,7 @@ class TestWorkerCannotKillTheRun:
     forever.
     """
 
-    def _policy_cfg(self, allowed=("python",)):
+    def _policy_cfg(self, allowed=("python3",)):
         return load_config(
             overrides={
                 "agents": [
@@ -258,7 +264,7 @@ class TestWorkerCannotKillTheRun:
         from freemad.evolve.variation import VariationPolicyError, run_commands_policy
 
         with pytest.raises(VariationPolicyError, match="unparseable"):
-            run_commands_policy(self._policy_cfg(), ('python -c "oops',), tmp_path)
+            run_commands_policy(self._policy_cfg(), ('python3 -c "oops',), tmp_path)
 
     def test_allowlisted_command_that_is_not_installed(self, tmp_path):
         from freemad.evolve.variation import VariationPolicyError, run_commands_policy
@@ -277,7 +283,7 @@ class TestScalarWhereAListBelongs:
     @pytest.mark.parametrize("field", ["protected_paths", "env_passthrough"])
     def test_a_bare_string_under_judge_is_rejected(self, tmp_path, field):
         with pytest.raises(ConfigError, match="single value"):
-            _judge_config(tmp_path, "python probe.py", **{field: "bench.py"})
+            _judge_config(tmp_path, f"{sys.executable} probe.py", **{field: "bench.py"})
 
     def test_a_bare_string_for_knowledge_paths_is_rejected(self, tmp_path):
         with pytest.raises(ConfigError, match="single value"):

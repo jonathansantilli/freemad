@@ -6,6 +6,8 @@ the implementation was violating.
 
 from __future__ import annotations
 
+import sys
+
 import json
 from pathlib import Path
 from typing import List
@@ -103,14 +105,14 @@ def _late_stage_config(repo: Path, tmp_path: Path):
             "stages": [
                 {
                     "name": "bench",
-                    "command": "python bench.py",
+                    "command": f"{sys.executable} bench.py",
                     "timeout_sec": 60,
                     "parse": "json_stdout",
                     "provides": ["ops_per_sec"],
                 },
                 {
                     "name": "tests",
-                    "command": "python -m pytest tests -q",
+                    "command": f"{sys.executable} -m pytest tests -q",
                     "timeout_sec": 60,
                 },
             ],
@@ -215,7 +217,7 @@ def _two_component_config(repo: Path, tmp_path: Path):
                     "stages": [
                         {
                             "name": "bench",
-                            "command": "python bench.py",
+                            "command": f"{sys.executable} bench.py",
                             "timeout_sec": 60,
                             "parse": "json_stdout",
                             "provides": ["correctness", "ops_per_sec"],
