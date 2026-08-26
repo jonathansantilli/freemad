@@ -193,6 +193,9 @@ class TestRealContainerIsolation:
         return repo
 
     def _judge(self, repo: Path, tmp_path: Path, containerised: bool):
+        # Containerised, the stage runs the image's own python. On the host it must run
+        # *this* interpreter: a bare `python` resolves only when a venv is on PATH.
+        command = "python probe.py" if containerised else f"{sys.executable} probe.py"
         cfg = load_config(
             overrides={
                 "agents": [
@@ -207,7 +210,7 @@ class TestRealContainerIsolation:
                         "stages": [
                             {
                                 "name": "probe",
-                                "command": "python probe.py",
+                                "command": command,
                                 "timeout_sec": 180,
                                 "parse": "json_stdout",
                                 "provides": ["home_has_claude", "sees_host_root"],
